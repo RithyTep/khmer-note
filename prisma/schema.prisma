@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Users/Assignees
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  avatar    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  assignedProjects Project[]
+
+  @@map("users")
+}
+
+// Project/Document (main workspace item)
+model Project {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  emoji       String   @default("💻")
+  status      Status   @default(IN_PROGRESS)
+  dueDate     DateTime?
+  isFavorite  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  assigneeId String?
+  assignee   User?   @relation(fields: [assigneeId], references: [id])
+  tasks      Task[]
+  kanbanCards KanbanCard[]
+
+  @@map("projects")
+}
+
+// Status enum
+enum Status {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+// Task (checklist items)
+model Task {
+  id        String   @id @default(cuid())
+  text      String
+  tag       String?
+  checked   Boolean  @default(false)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("tasks")
+}
+
+// Kanban Column enum
+enum KanbanColumn {
+  TODO
+  PROGRESS
+  DONE
+}
+
+// Kanban Priority enum
+enum Priority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+// Kanban Card
+model KanbanCard {
+  id        String       @id @default(cuid())
+  text      String
+  column    KanbanColumn @default(TODO)
+  priority  Priority?
+  order     Int          @default(0)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  // Relations
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("kanban_cards")
+}

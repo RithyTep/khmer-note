@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Noto Sans Khmer', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #e4e4e7;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #d4d4d8;
+}
+
+/* Checkbox Animation */
+.custom-checkbox input:checked + div {
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+.custom-checkbox input:checked + div svg {
+  display: block;
+}
+
+/* Content Editable */
+[contenteditable]:empty:before {
+  content: attr(data-placeholder);
+  color: #d4d4d8;
+  pointer-events: none;
+  display: block;
+}
+[contenteditable]:focus {
+  outline: none;
+}
+
+/* Hide generic date input icon */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
