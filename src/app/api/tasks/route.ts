@@ -2,9 +2,15 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTasksByProjectCached } from "@/lib/cache";
 import { revalidateTasks } from "@/lib/revalidate";
+import { rateLimit, getClientId, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 
 // GET /api/tasks - Get tasks (optionally by projectId, cached)
 export async function GET(request: Request) {
+  // Rate limit check
+  const clientId = getClientId(request);
+  const result = rateLimit(`tasks:get:${clientId}`, RATE_LIMITS.read);
+  if (!result.success) return rateLimitResponse(result);
+
   try {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get("projectId");
@@ -32,6 +38,11 @@ export async function GET(request: Request) {
 
 // POST /api/tasks - Create a new task
 export async function POST(request: Request) {
+  // Rate limit check
+  const clientId = getClientId(request);
+  const result = rateLimit(`tasks:post:${clientId}`, RATE_LIMITS.write);
+  if (!result.success) return rateLimitResponse(result);
+
   try {
     const body = await request.json();
     const { text, tag, projectId } = body;

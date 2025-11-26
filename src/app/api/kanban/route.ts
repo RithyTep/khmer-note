@@ -2,10 +2,16 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getKanbanCardsByProjectCached } from "@/lib/cache";
 import { revalidateKanban } from "@/lib/revalidate";
+import { rateLimit, getClientId, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 import { KanbanColumn, Priority } from "@prisma/client";
 
 // GET /api/kanban - Get kanban cards (optionally by projectId, cached)
 export async function GET(request: Request) {
+  // Rate limit check
+  const clientId = getClientId(request);
+  const result = rateLimit(`kanban:get:${clientId}`, RATE_LIMITS.read);
+  if (!result.success) return rateLimitResponse(result);
+
   try {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get("projectId");
@@ -33,6 +39,11 @@ export async function GET(request: Request) {
 
 // POST /api/kanban - Create a new kanban card
 export async function POST(request: Request) {
+  // Rate limit check
+  const clientId = getClientId(request);
+  const result = rateLimit(`kanban:post:${clientId}`, RATE_LIMITS.write);
+  if (!result.success) return rateLimitResponse(result);
+
   try {
     const body = await request.json();
     const { text, column, priority, projectId } = body;
@@ -77,6 +88,11 @@ export async function POST(request: Request) {
 
 // DELETE /api/kanban?projectId=xxx - Delete all kanban cards for a project (reset)
 export async function DELETE(request: Request) {
+  // Rate limit check
+  const clientId = getClientId(request);
+  const result = rateLimit(`kanban:delete:${clientId}`, RATE_LIMITS.heavy);
+  if (!result.success) return rateLimitResponse(result);
+
   try {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get("projectId");

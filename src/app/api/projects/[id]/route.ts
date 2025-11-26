@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getProjectByIdCached } from "@/lib/cache";
 import { revalidateProject, revalidateProjects } from "@/lib/revalidate";
+import { rateLimit, getClientId, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 import { Status } from "@prisma/client";
 
 interface RouteParams {
@@ -10,6 +11,11 @@ interface RouteParams {
 
 // GET /api/projects/[id] - Get a single project (cached)
 export async function GET(request: Request, { params }: RouteParams) {
+  // Rate limit check
+  const clientId = getClientId(request);
+  const result = rateLimit(`project:get:${clientId}`, RATE_LIMITS.read);
+  if (!result.success) return rateLimitResponse(result);
+
   try {
     const { id } = await params;
 
@@ -32,6 +38,11 @@ export async function GET(request: Request, { params }: RouteParams) {
 
 // PATCH /api/projects/[id] - Update a project
 export async function PATCH(request: Request, { params }: RouteParams) {
+  // Rate limit check
+  const clientId = getClientId(request);
+  const result = rateLimit(`project:patch:${clientId}`, RATE_LIMITS.write);
+  if (!result.success) return rateLimitResponse(result);
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -74,6 +85,11 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
 // DELETE /api/projects/[id] - Delete a project
 export async function DELETE(request: Request, { params }: RouteParams) {
+  // Rate limit check
+  const clientId = getClientId(request);
+  const result = rateLimit(`project:delete:${clientId}`, RATE_LIMITS.heavy);
+  if (!result.success) return rateLimitResponse(result);
+
   try {
     const { id } = await params;
 

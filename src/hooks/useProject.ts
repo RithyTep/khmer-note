@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type {
   Project,
   User,
@@ -12,7 +12,10 @@ import type {
   CreateKanbanCardInput,
   UpdateKanbanCardInput,
 } from "@/types";
-import { KanbanColumn } from "@prisma/client";
+import { KanbanColumn, Status } from "@prisma/client";
+
+// Helper to generate temporary IDs
+const tempId = () => `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 export function useProject(projectId: string | null) {
   const [project, setProject] = useState<Project | null>(null);
@@ -44,189 +47,228 @@ export function useProject(projectId: string | null) {
     fetchProject();
   }, [fetchProject]);
 
-  // Update project
+  // OPTIMISTIC: Update project - instant UI update
   const updateProject = useCallback(
-    async (data: UpdateProjectInput) => {
-      if (!projectId) return;
-      try {
-        const res = await fetch(`/api/projects/${projectId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        if (!res.ok) throw new Error("Failed to update project");
-        const updated = await res.json();
-        setProject(updated);
-        return updated;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
-        throw err;
-      }
+    (data: UpdateProjectInput) => {
+      if (!projectId || !project) return;
+
+      // Optimistic update
+      setProject((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          ...data,
+          dueDate: data.dueDate ? new Date(data.dueDate) : data.dueDate === null ? null : prev.dueDate,
+          updatedAt: new Date(),
+        } as Project;
+      });
+
+      // Fire and forget API call
+      fetch(`/api/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }).catch(console.error);
     },
-    [projectId]
+    [projectId, project]
   );
 
-  // Cycle status
-  const cycleStatus = useCallback(async () => {
+  // OPTIMISTIC: Cycle status
+  const cycleStatus = useCallback(() => {
     if (!project) return;
-    const statusOrder = ["NOT_STARTED", "IN_PROGRESS", "COMPLETED"] as const;
+    const statusOrder: Status[] = ["NOT_STARTED", "IN_PROGRESS", "COMPLETED"];
     const currentIndex = statusOrder.indexOf(project.status);
     const nextStatus = statusOrder[(currentIndex + 1) % statusOrder.length];
-    return updateProject({ status: nextStatus });
+    updateProject({ status: nextStatus });
   }, [project, updateProject]);
 
-  // Task operations
+  // OPTIMISTIC: Add task - instant UI update with temp ID
   const addTask = useCallback(
-    async (input: Omit<CreateTaskInput, "projectId">) => {
-      if (!projectId) return;
-      try {
-        const res = await fetch("/api/tasks", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...input, projectId }),
-        });
-        if (!res.ok) throw new Error("Failed to create task");
-        const task = await res.json();
-        setProject((prev) =>
-          prev ? { ...prev, tasks: [...prev.tasks, task] } : null
-        );
-        return task;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
-        throw err;
-      }
-    },
-    [projectId]
-  );
+    (input: Omit<CreateTaskInput, "projectId">) => {
+      if (!projectId || !project) return;
 
-  const updateTask = useCallback(
-    async (taskId: string, data: UpdateTaskInput) => {
-      try {
-        const res = await fetch(`/api/tasks/${taskId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        if (!res.ok) throw new Error("Failed to update task");
-        const updated = await res.json();
-        setProject((prev) =>
-          prev
-            ? {
-                ...prev,
-                tasks: prev.tasks.map((t) => (t.id === taskId ? updated : t)),
-              }
-            : null
-        );
-        return updated;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
-        throw err;
-      }
-    },
-    []
-  );
+      const newTask: Task = {
+        id: tempId(),
+        text: input.text,
+        tag: input.tag || "New",
+        checked: false,
+        order: project.tasks.length,
+        projectId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-  const deleteTask = useCallback(async (taskId: string) => {
-    try {
-      const res = await fetch(`/api/tasks/${taskId}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to delete task");
+      // Optimistic update
       setProject((prev) =>
-        prev
-          ? { ...prev, tasks: prev.tasks.filter((t) => t.id !== taskId) }
-          : null
+        prev ? { ...prev, tasks: [...prev.tasks, newTask] } : null
       );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      throw err;
-    }
-  }, []);
 
-  const toggleTask = useCallback(
-    async (taskId: string) => {
-      const task = project?.tasks.find((t) => t.id === taskId);
-      if (!task) return;
-      return updateTask(taskId, { checked: !task.checked });
+      // Fire and forget
+      fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...input, projectId }),
+      })
+        .then((res) => res.json())
+        .then((task) => {
+          // Replace temp ID with real ID
+          setProject((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  tasks: prev.tasks.map((t) =>
+                    t.id === newTask.id ? task : t
+                  ),
+                }
+              : null
+          );
+        })
+        .catch(console.error);
     },
-    [project, updateTask]
+    [projectId, project]
   );
 
-  // Kanban operations
-  const addKanbanCard = useCallback(
-    async (input: Omit<CreateKanbanCardInput, "projectId">) => {
-      if (!projectId) return;
-      try {
-        const res = await fetch("/api/kanban", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...input, projectId }),
-        });
-        if (!res.ok) throw new Error("Failed to create kanban card");
-        const card = await res.json();
-        setProject((prev) =>
-          prev ? { ...prev, kanbanCards: [...prev.kanbanCards, card] } : null
-        );
-        return card;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
-        throw err;
-      }
-    },
-    [projectId]
-  );
-
-  const updateKanbanCard = useCallback(
-    async (cardId: string, data: UpdateKanbanCardInput) => {
-      try {
-        const res = await fetch(`/api/kanban/${cardId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        if (!res.ok) throw new Error("Failed to update kanban card");
-        const updated = await res.json();
-        setProject((prev) =>
-          prev
-            ? {
-                ...prev,
-                kanbanCards: prev.kanbanCards.map((c) =>
-                  c.id === cardId ? updated : c
-                ),
-              }
-            : null
-        );
-        return updated;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
-        throw err;
-      }
-    },
-    []
-  );
-
-  const deleteKanbanCard = useCallback(async (cardId: string) => {
-    try {
-      const res = await fetch(`/api/kanban/${cardId}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to delete kanban card");
+  // OPTIMISTIC: Update task
+  const updateTask = useCallback(
+    (taskId: string, data: UpdateTaskInput) => {
+      // Optimistic update
       setProject((prev) =>
         prev
           ? {
               ...prev,
-              kanbanCards: prev.kanbanCards.filter((c) => c.id !== cardId),
+              tasks: prev.tasks.map((t) =>
+                t.id === taskId ? { ...t, ...data, updatedAt: new Date() } : t
+              ),
             }
           : null
       );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      throw err;
-    }
+
+      // Fire and forget
+      fetch(`/api/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }).catch(console.error);
+    },
+    []
+  );
+
+  // OPTIMISTIC: Delete task
+  const deleteTask = useCallback((taskId: string) => {
+    // Optimistic update
+    setProject((prev) =>
+      prev
+        ? { ...prev, tasks: prev.tasks.filter((t) => t.id !== taskId) }
+        : null
+    );
+
+    // Fire and forget
+    fetch(`/api/tasks/${taskId}`, { method: "DELETE" }).catch(console.error);
   }, []);
 
+  // OPTIMISTIC: Toggle task
+  const toggleTask = useCallback(
+    (taskId: string) => {
+      const task = project?.tasks.find((t) => t.id === taskId);
+      if (!task) return;
+      updateTask(taskId, { checked: !task.checked });
+    },
+    [project, updateTask]
+  );
+
+  // OPTIMISTIC: Add kanban card
+  const addKanbanCard = useCallback(
+    (input: Omit<CreateKanbanCardInput, "projectId">) => {
+      if (!projectId || !project) return;
+
+      const column = input.column || "TODO";
+      const cardsInColumn = project.kanbanCards.filter((c) => c.column === column);
+
+      const newCard: KanbanCard = {
+        id: tempId(),
+        text: input.text,
+        column: column as KanbanColumn,
+        priority: input.priority || null,
+        order: cardsInColumn.length,
+        projectId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Optimistic update
+      setProject((prev) =>
+        prev ? { ...prev, kanbanCards: [...prev.kanbanCards, newCard] } : null
+      );
+
+      // Fire and forget
+      fetch("/api/kanban", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...input, projectId }),
+      })
+        .then((res) => res.json())
+        .then((card) => {
+          // Replace temp ID with real ID
+          setProject((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  kanbanCards: prev.kanbanCards.map((c) =>
+                    c.id === newCard.id ? card : c
+                  ),
+                }
+              : null
+          );
+        })
+        .catch(console.error);
+    },
+    [projectId, project]
+  );
+
+  // OPTIMISTIC: Update kanban card
+  const updateKanbanCard = useCallback(
+    (cardId: string, data: UpdateKanbanCardInput) => {
+      // Optimistic update
+      setProject((prev) =>
+        prev
+          ? {
+              ...prev,
+              kanbanCards: prev.kanbanCards.map((c) =>
+                c.id === cardId ? { ...c, ...data, updatedAt: new Date() } : c
+              ),
+            }
+          : null
+      );
+
+      // Fire and forget
+      fetch(`/api/kanban/${cardId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }).catch(console.error);
+    },
+    []
+  );
+
+  // OPTIMISTIC: Delete kanban card
+  const deleteKanbanCard = useCallback((cardId: string) => {
+    // Optimistic update
+    setProject((prev) =>
+      prev
+        ? {
+            ...prev,
+            kanbanCards: prev.kanbanCards.filter((c) => c.id !== cardId),
+          }
+        : null
+    );
+
+    // Fire and forget
+    fetch(`/api/kanban/${cardId}`, { method: "DELETE" }).catch(console.error);
+  }, []);
+
+  // OPTIMISTIC: Move kanban card
   const moveKanbanCard = useCallback(
-    async (cardId: string, direction: -1 | 1) => {
+    (cardId: string, direction: -1 | 1) => {
       const card = project?.kanbanCards.find((c) => c.id === cardId);
       if (!card) return;
 
@@ -236,23 +278,23 @@ export function useProject(projectId: string | null) {
 
       if (newIndex < 0 || newIndex >= columns.length) return;
 
-      return updateKanbanCard(cardId, { column: columns[newIndex] });
+      const newColumn = columns[newIndex];
+      updateKanbanCard(cardId, { column: newColumn });
     },
     [project, updateKanbanCard]
   );
 
-  const resetKanban = useCallback(async () => {
+  // OPTIMISTIC: Reset kanban
+  const resetKanban = useCallback(() => {
     if (!projectId) return;
-    try {
-      const res = await fetch(`/api/kanban?projectId=${projectId}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to reset kanban");
-      setProject((prev) => (prev ? { ...prev, kanbanCards: [] } : null));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      throw err;
-    }
+
+    // Optimistic update
+    setProject((prev) => (prev ? { ...prev, kanbanCards: [] } : null));
+
+    // Fire and forget
+    fetch(`/api/kanban?projectId=${projectId}`, {
+      method: "DELETE",
+    }).catch(console.error);
   }, [projectId]);
 
   return {
@@ -282,68 +324,71 @@ export function useUsers() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchUsers() {
-      try {
-        const res = await fetch("/api/users");
-        if (res.ok) {
-          const data = await res.json();
-          setUsers(data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch users:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchUsers();
+    fetch("/api/users")
+      .then((res) => res.ok ? res.json() : [])
+      .then(setUsers)
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
   return { users, loading };
 }
 
-// Hook for projects list
+// Hook for projects list with optimistic updates
 export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchProjects = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await fetch("/api/projects");
-      if (res.ok) {
-        const data = await res.json();
-        setProjects(data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch projects:", err);
-    } finally {
-      setLoading(false);
-    }
+  const fetchProjects = useCallback(() => {
+    setLoading(true);
+    fetch("/api/projects")
+      .then((res) => res.ok ? res.json() : [])
+      .then(setProjects)
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
 
-  const createProject = useCallback(
-    async (title: string) => {
-      try {
-        const res = await fetch("/api/projects", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title }),
-        });
-        if (!res.ok) throw new Error("Failed to create project");
-        const project = await res.json();
-        setProjects((prev) => [project, ...prev]);
-        return project;
-      } catch (err) {
-        console.error("Failed to create project:", err);
-        throw err;
-      }
-    },
-    []
-  );
+  // OPTIMISTIC: Create project
+  const createProject = useCallback((title: string) => {
+    const newProject: Project = {
+      id: tempId(),
+      title,
+      description: null,
+      emoji: "📝",
+      status: "NOT_STARTED" as Status,
+      dueDate: null,
+      isFavorite: false,
+      assigneeId: null,
+      assignee: null,
+      tasks: [],
+      kanbanCards: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    // Optimistic update
+    setProjects((prev) => [newProject, ...prev]);
+
+    // Fire API and update with real ID
+    fetch("/api/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    })
+      .then((res) => res.json())
+      .then((project) => {
+        setProjects((prev) =>
+          prev.map((p) => (p.id === newProject.id ? project : p))
+        );
+      })
+      .catch(console.error);
+
+    return newProject;
+  }, []);
 
   return { projects, loading, refetch: fetchProjects, createProject };
 }

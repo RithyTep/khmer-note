@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { revalidateTasks } from "@/lib/revalidate";
+import { rateLimit, getClientId, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -8,6 +9,11 @@ interface RouteParams {
 
 // GET /api/tasks/[id] - Get a single task
 export async function GET(request: Request, { params }: RouteParams) {
+  // Rate limit check
+  const clientId = getClientId(request);
+  const result = rateLimit(`task:get:${clientId}`, RATE_LIMITS.read);
+  if (!result.success) return rateLimitResponse(result);
+
   try {
     const { id } = await params;
 
@@ -31,6 +37,11 @@ export async function GET(request: Request, { params }: RouteParams) {
 
 // PATCH /api/tasks/[id] - Update a task
 export async function PATCH(request: Request, { params }: RouteParams) {
+  // Rate limit check
+  const clientId = getClientId(request);
+  const result = rateLimit(`task:patch:${clientId}`, RATE_LIMITS.write);
+  if (!result.success) return rateLimitResponse(result);
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -63,6 +74,11 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
 // DELETE /api/tasks/[id] - Delete a task
 export async function DELETE(request: Request, { params }: RouteParams) {
+  // Rate limit check
+  const clientId = getClientId(request);
+  const result = rateLimit(`task:delete:${clientId}`, RATE_LIMITS.write);
+  if (!result.success) return rateLimitResponse(result);
+
   try {
     const { id } = await params;
 

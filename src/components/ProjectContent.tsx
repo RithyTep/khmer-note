@@ -7,7 +7,7 @@ import { TaskList } from "./TaskList";
 import { KanbanBoard } from "./KanbanBoard";
 import { STATUS_CONFIG } from "@/types";
 import type { User } from "@/types";
-import { Status, KanbanColumn } from "@prisma/client";
+import { KanbanColumn } from "@prisma/client";
 
 interface ProjectContentProps {
   projectId: string;
@@ -45,42 +45,43 @@ export function ProjectContent({
 
   const handleTitleChange = () => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(async () => {
+    saveTimeoutRef.current = setTimeout(() => {
       const newTitle = titleRef.current?.innerText || "";
       if (newTitle && newTitle !== project?.title) {
-        await updateProject({ title: newTitle });
+        updateProject({ title: newTitle });
       }
-    }, 1000);
+    }, 500);
   };
 
   const handleDescChange = () => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(async () => {
+    saveTimeoutRef.current = setTimeout(() => {
       const newDesc = descRef.current?.innerText || "";
       if (newDesc !== project?.description) {
-        await updateProject({ description: newDesc });
+        updateProject({ description: newDesc });
       }
-    }, 1000);
+    }, 500);
   };
 
-  const handleStatusCycle = async () => {
-    await cycleStatus();
+  // All handlers are now synchronous - no await!
+  const handleStatusCycle = () => {
+    cycleStatus();
     onShowToast("ស្ថានភាពបានផ្លាស់ប្តូរ");
   };
 
-  const handleAssigneeChange = async (user: User) => {
-    await updateProject({ assigneeId: user.id });
+  const handleAssigneeChange = (user: User) => {
+    updateProject({ assigneeId: user.id });
     setShowUserDropdown(false);
     onShowToast("អ្នកទទួលខុសត្រូវបានផ្លាស់ប្តូរ");
   };
 
-  const handleDateChange = async (date: string) => {
-    await updateProject({ dueDate: date || null });
+  const handleDateChange = (date: string) => {
+    updateProject({ dueDate: date || null });
     onShowToast("កាលបរិច្ឆេទបានផ្លាស់ប្តូរ");
   };
 
-  const handleToggleFavorite = async () => {
-    await updateProject({ isFavorite: !project?.isFavorite });
+  const handleToggleFavorite = () => {
+    updateProject({ isFavorite: !project?.isFavorite });
     onShowToast(project?.isFavorite ? "បានដកចេញពីចំណូលចិត្ត" : "បានបន្ថែមទៅចំណូលចិត្ត");
   };
 
@@ -299,40 +300,40 @@ export function ProjectContent({
               </div>
             </div>
 
-            {/* Tasks */}
+            {/* Tasks - all callbacks are now sync */}
             <TaskList
               tasks={project.tasks}
-              onAddTask={async (text) => {
-                await addTask({ text });
+              onAddTask={(text) => {
+                addTask({ text });
                 onShowToast("កិច្ចការថ្មីបានបង្កើត");
               }}
-              onToggleTask={async (taskId) => {
-                await toggleTask(taskId);
+              onToggleTask={(taskId) => {
+                toggleTask(taskId);
               }}
-              onDeleteTask={async (taskId) => {
-                await deleteTask(taskId);
+              onDeleteTask={(taskId) => {
+                deleteTask(taskId);
                 onShowToast("បានលុបកិច្ចការ");
               }}
             />
 
-            {/* Kanban Board */}
+            {/* Kanban Board - all callbacks are now sync */}
             <KanbanBoard
               cards={project.kanbanCards}
-              onAddCard={async (column, text) => {
-                await addKanbanCard({ text, column });
+              onAddCard={(column, text) => {
+                addKanbanCard({ text, column });
               }}
-              onUpdateCard={async (cardId, text) => {
-                await updateKanbanCard(cardId, { text });
+              onUpdateCard={(cardId, text) => {
+                updateKanbanCard(cardId, { text });
               }}
-              onDeleteCard={async (cardId) => {
-                await deleteKanbanCard(cardId);
+              onDeleteCard={(cardId) => {
+                deleteKanbanCard(cardId);
               }}
-              onMoveCard={async (cardId, direction) => {
-                await moveKanbanCard(cardId, direction);
+              onMoveCard={(cardId, direction) => {
+                moveKanbanCard(cardId, direction);
                 onShowToast("កាតត្រូវបានផ្លាស់ទី");
               }}
-              onResetBoard={async () => {
-                await resetKanban();
+              onResetBoard={() => {
+                resetKanban();
                 onShowToast("បានកំណត់ Kanban ឡើងវិញ");
               }}
             />

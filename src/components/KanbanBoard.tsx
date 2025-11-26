@@ -14,11 +14,11 @@ import { KanbanColumn, Priority } from "@prisma/client";
 
 interface KanbanBoardProps {
   cards: KanbanCard[];
-  onAddCard: (column: KanbanColumn, text: string) => Promise<void>;
-  onUpdateCard: (cardId: string, text: string) => Promise<void>;
-  onDeleteCard: (cardId: string) => Promise<void>;
-  onMoveCard: (cardId: string, direction: -1 | 1) => Promise<void>;
-  onResetBoard: () => Promise<void>;
+  onAddCard: (column: KanbanColumn, text: string) => void;
+  onUpdateCard: (cardId: string, text: string) => void;
+  onDeleteCard: (cardId: string) => void;
+  onMoveCard: (cardId: string, direction: -1 | 1) => void;
+  onResetBoard: () => void;
 }
 
 export function KanbanBoard({
@@ -71,10 +71,10 @@ export function KanbanBoard({
 interface KanbanColumnProps {
   column: KanbanColumn;
   cards: KanbanCard[];
-  onAddCard: (text: string) => Promise<void>;
-  onUpdateCard: (cardId: string, text: string) => Promise<void>;
-  onDeleteCard: (cardId: string) => Promise<void>;
-  onMoveCard: (cardId: string, direction: -1 | 1) => Promise<void>;
+  onAddCard: (text: string) => void;
+  onUpdateCard: (cardId: string, text: string) => void;
+  onDeleteCard: (cardId: string) => void;
+  onMoveCard: (cardId: string, direction: -1 | 1) => void;
   isFirst: boolean;
   isLast: boolean;
 }
@@ -134,9 +134,9 @@ function KanbanColumnComponent({
 
 interface KanbanCardProps {
   card: KanbanCard;
-  onUpdate: (cardId: string, text: string) => Promise<void>;
-  onDelete: (cardId: string) => Promise<void>;
-  onMove: (cardId: string, direction: -1 | 1) => Promise<void>;
+  onUpdate: (cardId: string, text: string) => void;
+  onDelete: (cardId: string) => void;
+  onMove: (cardId: string, direction: -1 | 1) => void;
   canMoveLeft: boolean;
   canMoveRight: boolean;
 }
@@ -157,10 +157,10 @@ function KanbanCardComponent({
     setText(card.text);
   }, [card.text]);
 
-  const handleBlur = async () => {
+  const handleBlur = () => {
     setIsEditing(false);
     if (text.trim() && text !== card.text) {
-      await onUpdate(card.id, text.trim());
+      onUpdate(card.id, text.trim());
     } else {
       setText(card.text);
     }
@@ -222,14 +222,10 @@ function KanbanCardComponent({
   );
 }
 
-function AddCardButton({ onAdd }: { onAdd: (text: string) => Promise<void> }) {
-  const handleClick = async () => {
-    await onAdd("កាតថ្មី");
-  };
-
+function AddCardButton({ onAdd }: { onAdd: (text: string) => void }) {
   return (
     <button
-      onClick={handleClick}
+      onClick={() => onAdd("កាតថ្មី")}
       className="w-full text-left p-1.5 mt-2 text-xs text-zinc-400 hover:text-zinc-600 hover:bg-zinc-200/50 rounded transition-colors flex items-center gap-1"
     >
       <Plus className="w-3 h-3" /> ថ្មី

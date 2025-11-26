@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { revalidateKanban } from "@/lib/revalidate";
+import { rateLimit, getClientId, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 import { KanbanColumn, Priority } from "@prisma/client";
 
 interface RouteParams {
@@ -9,6 +10,11 @@ interface RouteParams {
 
 // GET /api/kanban/[id] - Get a single kanban card
 export async function GET(request: Request, { params }: RouteParams) {
+  // Rate limit check
+  const clientId = getClientId(request);
+  const result = rateLimit(`kanban-card:get:${clientId}`, RATE_LIMITS.read);
+  if (!result.success) return rateLimitResponse(result);
+
   try {
     const { id } = await params;
 
@@ -35,6 +41,11 @@ export async function GET(request: Request, { params }: RouteParams) {
 
 // PATCH /api/kanban/[id] - Update a kanban card
 export async function PATCH(request: Request, { params }: RouteParams) {
+  // Rate limit check
+  const clientId = getClientId(request);
+  const result = rateLimit(`kanban-card:patch:${clientId}`, RATE_LIMITS.write);
+  if (!result.success) return rateLimitResponse(result);
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -69,6 +80,11 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
 // DELETE /api/kanban/[id] - Delete a kanban card
 export async function DELETE(request: Request, { params }: RouteParams) {
+  // Rate limit check
+  const clientId = getClientId(request);
+  const result = rateLimit(`kanban-card:delete:${clientId}`, RATE_LIMITS.write);
+  if (!result.success) return rateLimitResponse(result);
+
   try {
     const { id } = await params;
 

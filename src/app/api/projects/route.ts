@@ -2,10 +2,16 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getProjectsCached } from "@/lib/cache";
 import { revalidateProjects } from "@/lib/revalidate";
+import { rateLimit, getClientId, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 import { Status } from "@prisma/client";
 
 // GET /api/projects - Get all projects (cached)
 export async function GET(request: Request) {
+  // Rate limit check
+  const clientId = getClientId(request);
+  const result = rateLimit(`projects:get:${clientId}`, RATE_LIMITS.read);
+  if (!result.success) return rateLimitResponse(result);
+
   try {
     const { searchParams } = new URL(request.url);
     const favoritesOnly = searchParams.get("favorites") === "true";
@@ -39,6 +45,11 @@ export async function GET(request: Request) {
 
 // POST /api/projects - Create a new project
 export async function POST(request: Request) {
+  // Rate limit check
+  const clientId = getClientId(request);
+  const result = rateLimit(`projects:post:${clientId}`, RATE_LIMITS.write);
+  if (!result.success) return rateLimitResponse(result);
+
   try {
     const body = await request.json();
     const { title, description, emoji, status, dueDate, assigneeId, isFavorite } = body;

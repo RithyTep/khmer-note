@@ -6,9 +6,9 @@ import type { Task } from "@/types";
 
 interface TaskListProps {
   tasks: Task[];
-  onAddTask: (text: string) => Promise<void>;
-  onToggleTask: (taskId: string) => Promise<void>;
-  onDeleteTask: (taskId: string) => Promise<void>;
+  onAddTask: (text: string) => void;
+  onToggleTask: (taskId: string) => void;
+  onDeleteTask: (taskId: string) => void;
 }
 
 export function TaskList({
@@ -21,9 +21,9 @@ export function TaskList({
 
   const completedCount = tasks.filter((t) => t.checked).length;
 
-  const handleKeyPress = async (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && newTaskText.trim()) {
-      await onAddTask(newTaskText.trim());
+      onAddTask(newTaskText.trim());
       setNewTaskText("");
     }
   };
