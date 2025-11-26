@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getUsersCached } from "@/lib/cache";
+import { revalidateUsers } from "@/lib/revalidate";
 
-// GET /api/users - Get all users
+// GET /api/users - Get all users (cached)
 export async function GET() {
   try {
-    const users = await prisma.user.findMany({
-      orderBy: { name: "asc" },
-    });
+    // Use cached query - users rarely change
+    const users = await getUsersCached();
     return NextResponse.json(users);
   } catch (error) {
     console.error("Failed to fetch users:", error);
@@ -35,6 +36,9 @@ export async function POST(request: Request) {
           `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
       },
     });
+
+    // Revalidate cache
+    revalidateUsers();
 
     return NextResponse.json(user, { status: 201 });
   } catch (error) {

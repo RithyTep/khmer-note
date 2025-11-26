@@ -1,14 +1,22 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getTasksByProjectCached } from "@/lib/cache";
+import { revalidateTasks } from "@/lib/revalidate";
 
-// GET /api/tasks - Get tasks (optionally by projectId)
+// GET /api/tasks - Get tasks (optionally by projectId, cached)
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get("projectId");
 
+    if (projectId) {
+      // Use cached query
+      const tasks = await getTasksByProjectCached(projectId);
+      return NextResponse.json(tasks);
+    }
+
+    // Non-cached for all tasks
     const tasks = await prisma.task.findMany({
-      where: projectId ? { projectId } : undefined,
       orderBy: { order: "asc" },
     });
 
@@ -49,6 +57,9 @@ export async function POST(request: Request) {
         order: (maxOrderTask?.order ?? -1) + 1,
       },
     });
+
+    // Revalidate cache
+    revalidateTasks(projectId);
 
     return NextResponse.json(task, { status: 201 });
   } catch (error) {

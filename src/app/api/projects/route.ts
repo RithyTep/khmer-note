@@ -1,23 +1,28 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getProjectsCached } from "@/lib/cache";
+import { revalidateProjects } from "@/lib/revalidate";
 import { Status } from "@prisma/client";
 
-// GET /api/projects - Get all projects
+// GET /api/projects - Get all projects (cached)
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const favoritesOnly = searchParams.get("favorites") === "true";
 
+    // Use cached query for all projects
+    if (!favoritesOnly) {
+      const projects = await getProjectsCached();
+      return NextResponse.json(projects);
+    }
+
+    // Non-cached query for filtered results
     const projects = await prisma.project.findMany({
-      where: favoritesOnly ? { isFavorite: true } : undefined,
+      where: { isFavorite: true },
       include: {
         assignee: true,
-        tasks: {
-          orderBy: { order: "asc" },
-        },
-        kanbanCards: {
-          orderBy: { order: "asc" },
-        },
+        tasks: { orderBy: { order: "asc" } },
+        kanbanCards: { orderBy: { order: "asc" } },
       },
       orderBy: { updatedAt: "desc" },
     });
@@ -58,6 +63,9 @@ export async function POST(request: Request) {
         kanbanCards: true,
       },
     });
+
+    // Revalidate cache
+    revalidateProjects();
 
     return NextResponse.json(project, { status: 201 });
   } catch (error) {

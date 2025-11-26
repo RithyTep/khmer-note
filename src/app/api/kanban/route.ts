@@ -1,15 +1,23 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getKanbanCardsByProjectCached } from "@/lib/cache";
+import { revalidateKanban } from "@/lib/revalidate";
 import { KanbanColumn, Priority } from "@prisma/client";
 
-// GET /api/kanban - Get kanban cards (optionally by projectId)
+// GET /api/kanban - Get kanban cards (optionally by projectId, cached)
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get("projectId");
 
+    if (projectId) {
+      // Use cached query
+      const cards = await getKanbanCardsByProjectCached(projectId);
+      return NextResponse.json(cards);
+    }
+
+    // Non-cached for all cards
     const cards = await prisma.kanbanCard.findMany({
-      where: projectId ? { projectId } : undefined,
       orderBy: [{ column: "asc" }, { order: "asc" }],
     });
 
@@ -54,6 +62,9 @@ export async function POST(request: Request) {
       },
     });
 
+    // Revalidate cache
+    revalidateKanban(projectId);
+
     return NextResponse.json(card, { status: 201 });
   } catch (error) {
     console.error("Failed to create kanban card:", error);
@@ -80,6 +91,9 @@ export async function DELETE(request: Request) {
     await prisma.kanbanCard.deleteMany({
       where: { projectId },
     });
+
+    // Revalidate cache
+    revalidateKanban(projectId);
 
     return NextResponse.json({ message: "Kanban board reset successfully" });
   } catch (error) {

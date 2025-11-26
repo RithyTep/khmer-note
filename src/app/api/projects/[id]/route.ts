@@ -1,28 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getProjectByIdCached } from "@/lib/cache";
+import { revalidateProject, revalidateProjects } from "@/lib/revalidate";
 import { Status } from "@prisma/client";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-// GET /api/projects/[id] - Get a single project
+// GET /api/projects/[id] - Get a single project (cached)
 export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
 
-    const project = await prisma.project.findUnique({
-      where: { id },
-      include: {
-        assignee: true,
-        tasks: {
-          orderBy: { order: "asc" },
-        },
-        kanbanCards: {
-          orderBy: [{ column: "asc" }, { order: "asc" }],
-        },
-      },
-    });
+    // Use cached query
+    const project = await getProjectByIdCached(id);
 
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
@@ -62,14 +54,13 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       data: updateData,
       include: {
         assignee: true,
-        tasks: {
-          orderBy: { order: "asc" },
-        },
-        kanbanCards: {
-          orderBy: [{ column: "asc" }, { order: "asc" }],
-        },
+        tasks: { orderBy: { order: "asc" } },
+        kanbanCards: { orderBy: [{ column: "asc" }, { order: "asc" }] },
       },
     });
+
+    // Revalidate cache
+    revalidateProject(id);
 
     return NextResponse.json(project);
   } catch (error) {
@@ -89,6 +80,9 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     await prisma.project.delete({
       where: { id },
     });
+
+    // Revalidate cache
+    revalidateProjects();
 
     return NextResponse.json({ message: "Project deleted successfully" });
   } catch (error) {

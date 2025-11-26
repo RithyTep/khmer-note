@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { revalidateTasks } from "@/lib/revalidate";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -47,6 +48,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       data: updateData,
     });
 
+    // Revalidate cache
+    revalidateTasks(task.projectId);
+
     return NextResponse.json(task);
   } catch (error) {
     console.error("Failed to update task:", error);
@@ -62,9 +66,12 @@ export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
 
-    await prisma.task.delete({
+    const task = await prisma.task.delete({
       where: { id },
     });
+
+    // Revalidate cache
+    revalidateTasks(task.projectId);
 
     return NextResponse.json({ message: "Task deleted successfully" });
   } catch (error) {

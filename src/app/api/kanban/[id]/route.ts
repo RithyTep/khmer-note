@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { revalidateKanban } from "@/lib/revalidate";
 import { KanbanColumn, Priority } from "@prisma/client";
 
 interface RouteParams {
@@ -53,6 +54,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       data: updateData,
     });
 
+    // Revalidate cache
+    revalidateKanban(card.projectId);
+
     return NextResponse.json(card);
   } catch (error) {
     console.error("Failed to update kanban card:", error);
@@ -68,9 +72,12 @@ export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
 
-    await prisma.kanbanCard.delete({
+    const card = await prisma.kanbanCard.delete({
       where: { id },
     });
+
+    // Revalidate cache
+    revalidateKanban(card.projectId);
 
     return NextResponse.json({ message: "Kanban card deleted successfully" });
   } catch (error) {
