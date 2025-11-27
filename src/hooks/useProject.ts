@@ -318,22 +318,6 @@ export function useProject(projectId: string | null) {
   };
 }
 
-// Hook for users list
-export function useUsers() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/users")
-      .then((res) => res.ok ? res.json() : [])
-      .then(setUsers)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
-
-  return { users, loading };
-}
-
 // Hook for projects list with optimistic updates
 export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -353,7 +337,7 @@ export function useProjects() {
   }, [fetchProjects]);
 
   // OPTIMISTIC: Create project
-  const createProject = useCallback((title: string) => {
+  const createProject = useCallback((title: string, userId: string) => {
     const newProject: Project = {
       id: tempId(),
       title,
@@ -362,6 +346,7 @@ export function useProjects() {
       status: "NOT_STARTED" as Status,
       dueDate: null,
       isFavorite: false,
+      userId,
       assigneeId: null,
       assignee: null,
       tasks: [],

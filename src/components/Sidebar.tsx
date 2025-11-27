@@ -4,16 +4,20 @@ import {
   Search,
   Inbox,
   Settings2,
-  FileText,
-  CheckSquare,
-  LayoutGrid,
-  Code2,
   RotateCcw,
   ChevronsUpDown,
   X,
   Plus,
+  LogOut,
 } from "lucide-react";
 import type { Project } from "@/types";
+
+interface User {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+}
 
 interface SidebarProps {
   isOpen: boolean;
@@ -24,6 +28,8 @@ interface SidebarProps {
   onSelectProject: (projectId: string) => void;
   onCreateProject: () => void;
   onReset?: () => void;
+  user?: User;
+  onSignOut?: () => void;
 }
 
 export function Sidebar({
@@ -35,6 +41,8 @@ export function Sidebar({
   onSelectProject,
   onCreateProject,
   onReset,
+  user,
+  onSignOut,
 }: SidebarProps) {
   const favoriteProjects = projects.filter((p) => p.isFavorite);
   const otherProjects = projects.filter((p) => !p.isFavorite);
@@ -56,15 +64,27 @@ export function Sidebar({
         }`}
       >
         <div className="p-3 flex items-center justify-between">
-          <button className="flex-1 flex items-center gap-2 p-2 hover:bg-zinc-200/50 rounded-md transition-colors text-left group">
-            <div className="w-5 h-5 bg-orange-500 rounded text-[10px] flex items-center justify-center text-white font-semibold shadow-sm">
-              K
+          <div className="flex-1 flex items-center gap-2 p-2 text-left group">
+            {user?.image ? (
+              <img
+                src={user.image}
+                alt={user.name || "User"}
+                className="w-6 h-6 rounded-full"
+              />
+            ) : (
+              <div className="w-6 h-6 bg-orange-500 rounded-full text-[10px] flex items-center justify-center text-white font-semibold shadow-sm">
+                {user?.name?.charAt(0) || "K"}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate text-zinc-700">
+                {user?.name || "Khmer Note"}
+              </p>
+              <p className="text-[10px] text-zinc-400 truncate">
+                {user?.email || ""}
+              </p>
             </div>
-            <span className="text-sm font-medium truncate text-zinc-700">
-              Khmer Note
-            </span>
-            <ChevronsUpDown className="w-3 h-3 text-zinc-400 group-hover:text-zinc-600 ml-auto" />
-          </button>
+          </div>
           <button
             onClick={onClose}
             className="md:hidden p-2 text-zinc-500 hover:bg-zinc-200/50 rounded-md"
@@ -158,14 +178,15 @@ export function Sidebar({
           </div>
         </div>
 
-        {onReset && (
+        {/* Sign Out Button */}
+        {onSignOut && (
           <div className="p-3 border-t border-zinc-200">
             <button
-              onClick={onReset}
+              onClick={onSignOut}
               className="w-full flex items-center gap-2 px-2 py-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors text-sm"
             >
-              <RotateCcw className="w-4 h-4" />
-              <span>ចាប់ផ្តើមថ្មី (Reset)</span>
+              <LogOut className="w-4 h-4" />
+              <span>ចាកចេញ</span>
             </button>
           </div>
         )}

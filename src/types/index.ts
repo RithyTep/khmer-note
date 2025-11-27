@@ -4,8 +4,9 @@ export type { Status, KanbanColumn, Priority };
 
 export interface User {
   id: string;
-  name: string;
-  avatar: string;
+  name: string | null;
+  email: string | null;
+  image: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,6 +41,7 @@ export interface Project {
   status: Status;
   dueDate: Date | null;
   isFavorite: boolean;
+  userId: string;
   assigneeId: string | null;
   assignee: User | null;
   tasks: Task[];

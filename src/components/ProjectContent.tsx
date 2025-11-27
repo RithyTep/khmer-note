@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Menu, MoreHorizontal, Calendar, Users, CircleDashed, Check, Star } from "lucide-react";
-import { useProject, useUsers } from "@/hooks/useProject";
+import { useRef } from "react";
+import { Menu, MoreHorizontal, Calendar, CircleDashed, Star } from "lucide-react";
+import { useProject } from "@/hooks/useProject";
 import { TaskList } from "./TaskList";
 import { KanbanBoard } from "./KanbanBoard";
 import { STATUS_CONFIG } from "@/types";
-import type { User } from "@/types";
-import { KanbanColumn } from "@prisma/client";
 
 interface ProjectContentProps {
   projectId: string;
@@ -35,8 +33,6 @@ export function ProjectContent({
     resetKanban,
   } = useProject(projectId);
 
-  const { users } = useUsers();
-  const [showUserDropdown, setShowUserDropdown] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const descRef = useRef<HTMLDivElement>(null);
 
@@ -69,12 +65,6 @@ export function ProjectContent({
     onShowToast("ស្ថានភាពបានផ្លាស់ប្តូរ");
   };
 
-  const handleAssigneeChange = (user: User) => {
-    updateProject({ assigneeId: user.id });
-    setShowUserDropdown(false);
-    onShowToast("អ្នកទទួលខុសត្រូវបានផ្លាស់ប្តូរ");
-  };
-
   const handleDateChange = (date: string) => {
     updateProject({ dueDate: date || null });
     onShowToast("កាលបរិច្ឆេទបានផ្លាស់ប្តូរ");
@@ -84,17 +74,6 @@ export function ProjectContent({
     updateProject({ isFavorite: !project?.isFavorite });
     onShowToast(project?.isFavorite ? "បានដកចេញពីចំណូលចិត្ត" : "បានបន្ថែមទៅចំណូលចិត្ត");
   };
-
-  // Close dropdown on click outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (!(e.target as Element).closest("[data-user-dropdown]")) {
-        setShowUserDropdown(false);
-      }
-    };
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
 
   if (loading) {
     return (
@@ -201,60 +180,6 @@ export function ProjectContent({
               >
                 {statusConfig.text}
               </button>
-            </div>
-
-            {/* Assignee */}
-            <div className="flex items-center gap-2 text-zinc-500 h-7">
-              <Users className="w-4 h-4" />
-              <span>អ្នកទទួលខុសត្រូវ</span>
-            </div>
-            <div className="relative h-7 flex items-center" data-user-dropdown>
-              <button
-                onClick={() => setShowUserDropdown(!showUserDropdown)}
-                className="flex items-center gap-2 hover:bg-zinc-100 py-1 px-1.5 rounded -ml-1.5 transition-colors"
-              >
-                {project.assignee ? (
-                  <>
-                    <img
-                      src={project.assignee.avatar}
-                      alt={project.assignee.name}
-                      className="w-4 h-4 rounded-full bg-zinc-200 select-none"
-                    />
-                    <span className="text-zinc-700 truncate">
-                      {project.assignee.name}
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-zinc-400">ជ្រើសរើស...</span>
-                )}
-              </button>
-
-              {/* User Dropdown */}
-              {showUserDropdown && (
-                <div className="absolute top-8 left-0 w-48 bg-white border border-zinc-200 shadow-lg rounded-lg z-20 p-1">
-                  {users.map((user) => (
-                    <button
-                      key={user.id}
-                      onClick={() => handleAssigneeChange(user)}
-                      className={`w-full text-left flex items-center gap-2 p-1.5 hover:bg-zinc-100 rounded text-sm ${
-                        project.assigneeId === user.id
-                          ? "bg-zinc-50 font-medium"
-                          : ""
-                      }`}
-                    >
-                      <img
-                        src={user.avatar}
-                        alt={user.name}
-                        className="w-4 h-4 rounded-full"
-                      />
-                      <span className="truncate">{user.name}</span>
-                      {project.assigneeId === user.id && (
-                        <Check className="w-3 h-3 ml-auto text-blue-600" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* Due Date */}

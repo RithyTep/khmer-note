@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { revalidateKanban } from "@/lib/revalidate";
 import { rateLimit, getClientId, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 import { KanbanColumn, Priority } from "@prisma/client";
@@ -8,8 +9,23 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+// Helper to verify card ownership through project
+async function verifyCardOwnership(cardId: string, userId: string) {
+  const card = await prisma.kanbanCard.findUnique({
+    where: { id: cardId },
+    include: { project: { select: { userId: true } } },
+  });
+  return { card, isOwner: card?.project.userId === userId };
+}
+
 // GET /api/kanban/[id] - Get a single kanban card
 export async function GET(request: Request, { params }: RouteParams) {
+  // Auth check
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Rate limit check
   const clientId = getClientId(request);
   const result = rateLimit(`kanban-card:get:${clientId}`, RATE_LIMITS.read);
@@ -18,15 +34,17 @@ export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
 
-    const card = await prisma.kanbanCard.findUnique({
-      where: { id },
-    });
+    const { card, isOwner } = await verifyCardOwnership(id, session.user.id);
 
     if (!card) {
       return NextResponse.json(
         { error: "Kanban card not found" },
         { status: 404 }
       );
+    }
+
+    if (!isOwner) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     return NextResponse.json(card);
@@ -41,6 +59,12 @@ export async function GET(request: Request, { params }: RouteParams) {
 
 // PATCH /api/kanban/[id] - Update a kanban card
 export async function PATCH(request: Request, { params }: RouteParams) {
+  // Auth check
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Rate limit check
   const clientId = getClientId(request);
   const result = rateLimit(`kanban-card:patch:${clientId}`, RATE_LIMITS.write);
@@ -48,6 +72,20 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
   try {
     const { id } = await params;
+
+    const { card: existingCard, isOwner } = await verifyCardOwnership(id, session.user.id);
+
+    if (!existingCard) {
+      return NextResponse.json(
+        { error: "Kanban card not found" },
+        { status: 404 }
+      );
+    }
+
+    if (!isOwner) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await request.json();
     const { text, column, priority, order } = body;
 
@@ -80,6 +118,12 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
 // DELETE /api/kanban/[id] - Delete a kanban card
 export async function DELETE(request: Request, { params }: RouteParams) {
+  // Auth check
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Rate limit check
   const clientId = getClientId(request);
   const result = rateLimit(`kanban-card:delete:${clientId}`, RATE_LIMITS.write);
@@ -87,6 +131,19 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
   try {
     const { id } = await params;
+
+    const { card: existingCard, isOwner } = await verifyCardOwnership(id, session.user.id);
+
+    if (!existingCard) {
+      return NextResponse.json(
+        { error: "Kanban card not found" },
+        { status: 404 }
+      );
+    }
+
+    if (!isOwner) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const card = await prisma.kanbanCard.delete({
       where: { id },

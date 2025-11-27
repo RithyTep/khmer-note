@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { revalidateTasks } from "@/lib/revalidate";
 import { rateLimit, getClientId, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 
@@ -7,8 +8,23 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+// Helper to verify task ownership through project
+async function verifyTaskOwnership(taskId: string, userId: string) {
+  const task = await prisma.task.findUnique({
+    where: { id: taskId },
+    include: { project: { select: { userId: true } } },
+  });
+  return { task, isOwner: task?.project.userId === userId };
+}
+
 // GET /api/tasks/[id] - Get a single task
 export async function GET(request: Request, { params }: RouteParams) {
+  // Auth check
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Rate limit check
   const clientId = getClientId(request);
   const result = rateLimit(`task:get:${clientId}`, RATE_LIMITS.read);
@@ -17,12 +33,14 @@ export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
 
-    const task = await prisma.task.findUnique({
-      where: { id },
-    });
+    const { task, isOwner } = await verifyTaskOwnership(id, session.user.id);
 
     if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+
+    if (!isOwner) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     return NextResponse.json(task);
@@ -37,6 +55,12 @@ export async function GET(request: Request, { params }: RouteParams) {
 
 // PATCH /api/tasks/[id] - Update a task
 export async function PATCH(request: Request, { params }: RouteParams) {
+  // Auth check
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Rate limit check
   const clientId = getClientId(request);
   const result = rateLimit(`task:patch:${clientId}`, RATE_LIMITS.write);
@@ -44,6 +68,17 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
   try {
     const { id } = await params;
+
+    const { task: existingTask, isOwner } = await verifyTaskOwnership(id, session.user.id);
+
+    if (!existingTask) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+
+    if (!isOwner) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await request.json();
     const { text, tag, checked, order } = body;
 
@@ -74,6 +109,12 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
 // DELETE /api/tasks/[id] - Delete a task
 export async function DELETE(request: Request, { params }: RouteParams) {
+  // Auth check
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Rate limit check
   const clientId = getClientId(request);
   const result = rateLimit(`task:delete:${clientId}`, RATE_LIMITS.write);
@@ -81,6 +122,16 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
   try {
     const { id } = await params;
+
+    const { task: existingTask, isOwner } = await verifyTaskOwnership(id, session.user.id);
+
+    if (!existingTask) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+
+    if (!isOwner) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const task = await prisma.task.delete({
       where: { id },

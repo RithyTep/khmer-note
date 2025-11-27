@@ -10,13 +10,14 @@ const CACHE_PROFILES = {
   long: 3600, // 1 hour
 } as const;
 
-// Cached: Get all projects
-export async function getProjectsCached() {
+// Cached: Get all projects for a user
+export async function getProjectsCached(userId: string) {
   "use cache";
   cacheLife("minutes");
-  cacheTag("projects");
+  cacheTag("projects", `user-projects-${userId}`);
 
   return prisma.project.findMany({
+    where: { userId },
     include: {
       assignee: true,
       tasks: { orderBy: { order: "asc" } },

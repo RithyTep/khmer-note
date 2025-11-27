@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { getProjectsCached } from "@/lib/cache";
 import { revalidateProjects } from "@/lib/revalidate";
 import { rateLimit, getClientId, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 import { Status } from "@prisma/client";
 
-// GET /api/projects - Get all projects (cached)
+// GET /api/projects - Get all projects for authenticated user
 export async function GET(request: Request) {
+  // Auth check
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Rate limit check
   const clientId = getClientId(request);
   const result = rateLimit(`projects:get:${clientId}`, RATE_LIMITS.read);
@@ -16,15 +23,15 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const favoritesOnly = searchParams.get("favorites") === "true";
 
-    // Use cached query for all projects
+    // Use cached query for all user's projects
     if (!favoritesOnly) {
-      const projects = await getProjectsCached();
+      const projects = await getProjectsCached(session.user.id);
       return NextResponse.json(projects);
     }
 
     // Non-cached query for filtered results
     const projects = await prisma.project.findMany({
-      where: { isFavorite: true },
+      where: { userId: session.user.id, isFavorite: true },
       include: {
         assignee: true,
         tasks: { orderBy: { order: "asc" } },
@@ -43,8 +50,14 @@ export async function GET(request: Request) {
   }
 }
 
-// POST /api/projects - Create a new project
+// POST /api/projects - Create a new project for authenticated user
 export async function POST(request: Request) {
+  // Auth check
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Rate limit check
   const clientId = getClientId(request);
   const result = rateLimit(`projects:post:${clientId}`, RATE_LIMITS.write);
@@ -67,6 +80,7 @@ export async function POST(request: Request) {
         dueDate: dueDate ? new Date(dueDate) : null,
         assigneeId,
         isFavorite: isFavorite || false,
+        userId: session.user.id, // Owner is the authenticated user
       },
       include: {
         assignee: true,

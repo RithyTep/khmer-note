@@ -1,12 +1,28 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { getKanbanCardsByProjectCached } from "@/lib/cache";
 import { revalidateKanban } from "@/lib/revalidate";
 import { rateLimit, getClientId, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 import { KanbanColumn, Priority } from "@prisma/client";
 
-// GET /api/kanban - Get kanban cards (optionally by projectId, cached)
+// Helper to verify project ownership
+async function verifyProjectOwnership(projectId: string, userId: string) {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { userId: true },
+  });
+  return project?.userId === userId;
+}
+
+// GET /api/kanban - Get kanban cards (must belong to user's project)
 export async function GET(request: Request) {
+  // Auth check
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Rate limit check
   const clientId = getClientId(request);
   const result = rateLimit(`kanban:get:${clientId}`, RATE_LIMITS.read);
@@ -17,13 +33,20 @@ export async function GET(request: Request) {
     const projectId = searchParams.get("projectId");
 
     if (projectId) {
-      // Use cached query
+      // Verify ownership
+      if (!(await verifyProjectOwnership(projectId, session.user.id))) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
       const cards = await getKanbanCardsByProjectCached(projectId);
       return NextResponse.json(cards);
     }
 
-    // Non-cached for all cards
+    // Get all cards for user's projects
     const cards = await prisma.kanbanCard.findMany({
+      where: {
+        project: { userId: session.user.id },
+      },
       orderBy: [{ column: "asc" }, { order: "asc" }],
     });
 
@@ -39,6 +62,12 @@ export async function GET(request: Request) {
 
 // POST /api/kanban - Create a new kanban card
 export async function POST(request: Request) {
+  // Auth check
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Rate limit check
   const clientId = getClientId(request);
   const result = rateLimit(`kanban:post:${clientId}`, RATE_LIMITS.write);
@@ -53,6 +82,11 @@ export async function POST(request: Request) {
         { error: "Text and projectId are required" },
         { status: 400 }
       );
+    }
+
+    // Verify ownership
+    if (!(await verifyProjectOwnership(projectId, session.user.id))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const targetColumn = (column as KanbanColumn) || KanbanColumn.TODO;
@@ -88,6 +122,12 @@ export async function POST(request: Request) {
 
 // DELETE /api/kanban?projectId=xxx - Delete all kanban cards for a project (reset)
 export async function DELETE(request: Request) {
+  // Auth check
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Rate limit check
   const clientId = getClientId(request);
   const result = rateLimit(`kanban:delete:${clientId}`, RATE_LIMITS.heavy);
@@ -102,6 +142,11 @@ export async function DELETE(request: Request) {
         { error: "projectId is required" },
         { status: 400 }
       );
+    }
+
+    // Verify ownership
+    if (!(await verifyProjectOwnership(projectId, session.user.id))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     await prisma.kanbanCard.deleteMany({

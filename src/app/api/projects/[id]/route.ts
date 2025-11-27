@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { getProjectByIdCached } from "@/lib/cache";
 import { revalidateProject, revalidateProjects } from "@/lib/revalidate";
 import { rateLimit, getClientId, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
@@ -9,8 +10,14 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-// GET /api/projects/[id] - Get a single project (cached)
+// GET /api/projects/[id] - Get a single project (must belong to user)
 export async function GET(request: Request, { params }: RouteParams) {
+  // Auth check
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Rate limit check
   const clientId = getClientId(request);
   const result = rateLimit(`project:get:${clientId}`, RATE_LIMITS.read);
@@ -19,11 +26,16 @@ export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
 
-    // Use cached query
+    // Get project and verify ownership
     const project = await getProjectByIdCached(id);
 
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+
+    // Verify ownership
+    if (project.userId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     return NextResponse.json(project);
@@ -36,8 +48,14 @@ export async function GET(request: Request, { params }: RouteParams) {
   }
 }
 
-// PATCH /api/projects/[id] - Update a project
+// PATCH /api/projects/[id] - Update a project (must belong to user)
 export async function PATCH(request: Request, { params }: RouteParams) {
+  // Auth check
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Rate limit check
   const clientId = getClientId(request);
   const result = rateLimit(`project:patch:${clientId}`, RATE_LIMITS.write);
@@ -45,6 +63,21 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
   try {
     const { id } = await params;
+
+    // Verify ownership first
+    const existingProject = await prisma.project.findUnique({
+      where: { id },
+      select: { userId: true },
+    });
+
+    if (!existingProject) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+
+    if (existingProject.userId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await request.json();
     const { title, description, emoji, status, dueDate, assigneeId, isFavorite } = body;
 
@@ -83,8 +116,14 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
 }
 
-// DELETE /api/projects/[id] - Delete a project
+// DELETE /api/projects/[id] - Delete a project (must belong to user)
 export async function DELETE(request: Request, { params }: RouteParams) {
+  // Auth check
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Rate limit check
   const clientId = getClientId(request);
   const result = rateLimit(`project:delete:${clientId}`, RATE_LIMITS.heavy);
@@ -92,6 +131,20 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
   try {
     const { id } = await params;
+
+    // Verify ownership first
+    const existingProject = await prisma.project.findUnique({
+      where: { id },
+      select: { userId: true },
+    });
+
+    if (!existingProject) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+
+    if (existingProject.userId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     await prisma.project.delete({
       where: { id },
