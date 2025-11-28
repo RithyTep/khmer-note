@@ -150,7 +150,7 @@ export default function ChangelogPage() {
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <Link
               href="/"
@@ -176,7 +176,7 @@ export default function ChangelogPage() {
 
       {/* Hero */}
       <div className="bg-gradient-to-b from-amber-50 to-white dark:from-amber-950/20 dark:to-zinc-950 border-b border-zinc-200 dark:border-zinc-800">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 text-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-sm font-medium mb-6">
             <Tag className="w-4 h-4" />
             Version {RELEASES[0].version}
@@ -191,7 +191,7 @@ export default function ChangelogPage() {
       </div>
 
       {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Releases */}
         <div className="space-y-16">
           {RELEASES.map((release) => (
@@ -231,7 +231,7 @@ export default function ChangelogPage() {
               </div>
 
               {/* Features Grid */}
-              <div className="grid gap-6 sm:grid-cols-2">
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {release.features.map((category) => (
                   <div
                     key={category.category}
@@ -293,7 +293,7 @@ export default function ChangelogPage() {
           <p className="text-zinc-600 dark:text-zinc-400 mb-4">
             Coming soon in future releases:
           </p>
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {UPCOMING_FEATURES.map((feature, i) => (
               <div
                 key={i}
@@ -334,7 +334,7 @@ export default function ChangelogPage() {
 
       {/* Footer */}
       <footer className="border-t border-zinc-200 dark:border-zinc-800 py-8">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
           <p>© 2024 Khmer Note. Built with ❤️ in Cambodia.</p>
         </div>
       </footer>

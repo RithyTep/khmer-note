@@ -19,11 +19,9 @@ import {
   LucideIcon,
   Sun,
   Moon,
-  History,
 } from "lucide-react";
 import { useState, useRef, useCallback, memo, useMemo, useEffect } from "react";
 import Image from "next/image";
-import NextLink from "next/link";
 import { useTheme } from "next-themes";
 import { useClickOutside, useEscapeKey } from "@/hooks/useClickOutside";
 import { UI_TEXT } from "@/lib/constants";
@@ -312,25 +310,6 @@ const NavButton = memo(function NavButton({ icon: Icon, label, onClick, shortcut
   );
 });
 
-interface NavLinkProps {
-  icon: LucideIcon;
-  label: string;
-  href: string;
-}
-
-const NavLink = memo(function NavLink({ icon: Icon, label, href }: NavLinkProps) {
-  return (
-    <NextLink
-      href={href}
-      className="w-full flex items-center gap-2 px-2 py-1.5 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-md transition-colors text-sm group"
-    >
-      <Icon className="w-4 h-4 group-hover:text-zinc-800 dark:group-hover:text-zinc-200" />
-      <span>{label}</span>
-      <ExternalLink className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-50" />
-    </NextLink>
-  );
-});
-
 export const Sidebar = memo(function Sidebar({
   isOpen,
   onClose,
@@ -404,7 +383,6 @@ export const Sidebar = memo(function Sidebar({
         <div className="px-3 pb-2 space-y-0.5">
           <NavButton icon={Search} label={SIDEBAR.SEARCH} onClick={onOpenSearch} shortcut="⌘K" />
           <NavButton icon={Inbox} label={SIDEBAR.INBOX} />
-          <NavLink icon={History} label={SIDEBAR.CHANGELOG} href="/changelog" />
           <NavButton icon={Settings2} label={SIDEBAR.SETTINGS} />
         </div>
 

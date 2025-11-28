@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useCallback, useMemo, useState, useEffect, memo, lazy, Suspense } from "react";
-import { Menu, MoreHorizontal, Star, ImagePlus, X, Sparkles, Loader2 } from "lucide-react";
+import { Menu, MoreHorizontal, Star, ImagePlus, X, Sparkles, Loader2, History } from "lucide-react";
+import Link from "next/link";
 import { useProject } from "@/hooks/useProject";
 import { LazyEditor } from "./LazyEditor";
 import { CoverSelector } from "./CoverSelector";
@@ -64,6 +65,13 @@ const Header = memo(function Header({ project, formattedTime, onToggleSidebar, o
         )}
       </div>
       <div className="flex items-center gap-1 sm:gap-3">
+        <Link
+          href="/changelog"
+          className="p-1.5 text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded transition-colors"
+          title="Changelog"
+        >
+          <History className="w-4 h-4" />
+        </Link>
         {project && (
           <>
             <button
