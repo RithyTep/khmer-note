@@ -27,7 +27,6 @@ const SOLID_COLORS = [
   "#8b5cf6", "#a855f7", "#d946ef", "#ec4899",
 ];
 
-// Thumbnail URLs for gallery (smaller for faster loading)
 const UNSPLASH_THUMBNAILS = [
   "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&h=200&fit=crop&q=80",
   "https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=200&fit=crop&q=80",
@@ -39,7 +38,6 @@ const UNSPLASH_THUMBNAILS = [
   "https://images.unsplash.com/photo-1614851099511-773084f6911d?w=400&h=200&fit=crop&q=80",
 ];
 
-// Full-size URLs for actual cover (used when selected)
 const UNSPLASH_IMAGES = [
   "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&h=400&fit=crop&q=85",
   "https://images.unsplash.com/photo-1557683316-973673baf926?w=1200&h=400&fit=crop&q=85",
@@ -59,8 +57,6 @@ interface CoverSelectorProps {
   onSelect: (cover: string | null) => void;
   currentCover: string | null;
 }
-
-// --- Sub-components ---
 
 const TabButton = ({ 
   active, 
@@ -275,7 +271,6 @@ export const CoverSelector = memo(function CoverSelector({
         className="bg-white dark:bg-zinc-900 rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b dark:border-zinc-800">
           <h3 className="font-semibold text-gray-900 dark:text-zinc-100">ជ្រើសរើសគម្រប</h3>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
@@ -283,7 +278,6 @@ export const CoverSelector = memo(function CoverSelector({
           </button>
         </div>
 
-        {/* Tabs */}
         <div className="flex border-b dark:border-zinc-800 overflow-x-auto">
           <TabButton 
             active={activeTab === "gallery"} 
@@ -319,7 +313,6 @@ export const CoverSelector = memo(function CoverSelector({
           />
         </div>
 
-        {/* Content */}
         <div className="p-4 max-h-80 overflow-y-auto">
           {activeTab === "gallery" && (
             <GalleryTab onSelect={handleSelect} currentCover={currentCover} />
@@ -342,7 +335,6 @@ export const CoverSelector = memo(function CoverSelector({
           )}
         </div>
 
-        {/* Footer */}
         {currentCover && (
           <div className="p-4 border-t dark:border-zinc-800">
             <button

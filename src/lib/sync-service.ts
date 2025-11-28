@@ -7,55 +7,67 @@ import { API_HEADERS } from "./constants";
 type SyncStatus = "idle" | "syncing" | "success" | "error";
 type SyncListener = (status: SyncStatus, message?: string) => void;
 
+type PartialProjectUpdate = {
+  id: string;
+  updatedAt: Date;
+} & Partial<Omit<Project, "id" | "updatedAt">>;
+
 const listeners: Set<SyncListener> = new Set();
 let currentStatus: SyncStatus = "idle";
 
-// Debounce timers per project
 const debounceTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
-const DEBOUNCE_MS = 2000; // 2 seconds
+const pendingChanges: Map<string, PartialProjectUpdate> = new Map();
+const DEBOUNCE_MS = 5000;
 
-// Notify all listeners of status change
 function notifyListeners(status: SyncStatus, message?: string) {
   currentStatus = status;
   listeners.forEach((listener) => listener(status, message));
 }
 
-// Add a sync status listener
 export function addSyncListener(listener: SyncListener): () => void {
   listeners.add(listener);
   listener(currentStatus);
   return () => listeners.delete(listener);
 }
 
-// Get current sync status
 export function getSyncStatus(): SyncStatus {
   return currentStatus;
 }
 
-// Check online status
 export function isOnline(): boolean {
   return typeof navigator !== "undefined" ? navigator.onLine : true;
 }
 
-// Sync single project to server (debounced)
-export function syncProject(project: Project): void {
-  // Clear existing timer for this project
-  const existingTimer = debounceTimers.get(project.id);
+export function syncProjectFields(projectId: string, changedFields: Partial<Project>): void {
+  const existing = pendingChanges.get(projectId) || { id: projectId, updatedAt: new Date() };
+  pendingChanges.set(projectId, {
+    ...existing,
+    ...changedFields,
+    updatedAt: new Date(),
+  });
+
+  const existingTimer = debounceTimers.get(projectId);
   if (existingTimer) {
     clearTimeout(existingTimer);
   }
 
-  // Set new debounce timer
   const timer = setTimeout(async () => {
-    debounceTimers.delete(project.id);
-    await pushProjectToServer(project);
+    debounceTimers.delete(projectId);
+    const changes = pendingChanges.get(projectId);
+    pendingChanges.delete(projectId);
+    if (changes) {
+      await pushPartialToServer(changes);
+    }
   }, DEBOUNCE_MS);
 
-  debounceTimers.set(project.id, timer);
+  debounceTimers.set(projectId, timer);
 }
 
-// Push single project to server immediately
-async function pushProjectToServer(project: Project): Promise<boolean> {
+export function syncProject(project: Project): void {
+  syncProjectFields(project.id, project);
+}
+
+async function pushPartialToServer(update: PartialProjectUpdate): Promise<boolean> {
   if (!isOnline()) {
     notifyListeners("idle", "Offline - saved locally");
     return false;
@@ -65,12 +77,12 @@ async function pushProjectToServer(project: Project): Promise<boolean> {
 
   try {
     const response = await fetch("/api/sync", {
-      method: "POST",
+      method: "PATCH",
       headers: {
         "Content-Type": "application/json",
         [API_HEADERS.CLIENT_KEY]: API_HEADERS.CLIENT_VALUE,
       },
-      body: JSON.stringify({ projects: [project] }),
+      body: JSON.stringify(update),
     });
 
     if (!response.ok) {
@@ -86,7 +98,6 @@ async function pushProjectToServer(project: Project): Promise<boolean> {
   }
 }
 
-// Fetch all projects from server (on app load)
 export async function fetchFromServer(): Promise<Project[] | null> {
   if (!isOnline()) {
     return null;
@@ -111,7 +122,6 @@ export async function fetchFromServer(): Promise<Project[] | null> {
   }
 }
 
-// Initial sync on app load - fetch from server, merge with local
 export async function initialSync(): Promise<Project[]> {
   notifyListeners("syncing");
 
@@ -121,21 +131,17 @@ export async function initialSync(): Promise<Project[]> {
       getAllProjects(),
     ]);
 
-    // If offline or fetch failed, use local
     if (!serverProjects) {
       notifyListeners("idle", "Using local data");
       return localProjects;
     }
 
-    // Simple merge: server wins for same ID, keep local-only projects
     const projectMap = new Map<string, Project>();
 
-    // Add server projects
     for (const p of serverProjects) {
       projectMap.set(p.id, p);
     }
 
-    // Add local-only projects (temp IDs or newer)
     for (const p of localProjects) {
       if (p.id.startsWith("temp-") || !projectMap.has(p.id)) {
         projectMap.set(p.id, p);
@@ -144,7 +150,6 @@ export async function initialSync(): Promise<Project[]> {
 
     const merged = Array.from(projectMap.values());
 
-    // Save merged projects to local DB
     if (merged.length > 0) {
       await clearProjects();
       await saveProjects(merged);
@@ -159,7 +164,6 @@ export async function initialSync(): Promise<Project[]> {
   }
 }
 
-// Force sync (push all local changes)
 export async function forceSync(): Promise<boolean> {
   if (!isOnline()) {
     notifyListeners("idle", "Offline");
@@ -193,10 +197,8 @@ export async function forceSync(): Promise<boolean> {
   }
 }
 
-// Listen for online event to sync
 if (typeof window !== "undefined") {
   window.addEventListener("online", () => {
-    console.log("Back online, syncing...");
     forceSync();
   });
 }

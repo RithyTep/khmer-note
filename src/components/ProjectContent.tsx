@@ -16,10 +16,8 @@ import { Theme as EmojiTheme } from "emoji-picker-react";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import type { Project } from "@/types";
 
-// Lazy load EmojiPicker (~200KB) - only loads when user clicks emoji
 const EmojiPicker = lazy(() => import("emoji-picker-react"));
 
-// Loading placeholder for emoji picker
 const EmojiPickerFallback = () => (
   <div className="w-[350px] h-[400px] bg-white dark:bg-zinc-800 rounded-lg shadow-xl flex items-center justify-center">
     <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
@@ -157,8 +155,7 @@ export function ProjectContent({
           currentBlock,
           "after"
         );
-      } catch (e) {
-        // If no cursor or error, append to end
+      } catch {
         const blocks = await editor.tryParseMarkdownToBlocks(text);
         const docBlocks = editor.document;
         if (docBlocks.length > 0) {
@@ -169,7 +166,6 @@ export function ProjectContent({
              "after"
            );
         } else {
-           // If document is empty
            editor.replaceBlocks(editor.document, blocks);
         }
       }

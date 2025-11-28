@@ -39,11 +39,58 @@ interface VersionRelease {
 
 const RELEASES: VersionRelease[] = [
   {
+    version: "1.1.0",
+    date: "2025-01-28",
+    title: "Security & Performance Update",
+    description: "Major security hardening, faster sync system, and improved mobile experience.",
+    isLatest: true,
+    features: [
+      {
+        category: "Security Enhancements",
+        icon: Shield,
+        items: [
+          "IP-based rate limiting (200 req/min per IP)",
+          "CSRF/Origin validation for mutating requests",
+          "Payload size validation (500KB max)",
+          "Auto-blocks IPs after 5 rate limit violations",
+          "Security headers (X-Content-Type-Options, etc.)",
+        ],
+      },
+      {
+        category: "Sync Improvements",
+        icon: Zap,
+        items: [
+          "5-second debounce instead of 30 minutes",
+          "Partial sync (PATCH) - only changed fields",
+          "Reduced payload from ~38KB to ~100 bytes",
+          "Synced projects saved to IndexedDB immediately",
+        ],
+      },
+      {
+        category: "Mobile UX",
+        icon: Globe,
+        items: [
+          "Smaller AI chat window on mobile",
+          "Bottom-right positioning for AI button",
+          "Single-tap tabs interaction",
+          "Better user profile display",
+        ],
+      },
+      {
+        category: "Native App",
+        icon: Rocket,
+        items: [
+          "Capacitor iOS setup",
+          "Initial native app configuration",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.0.0",
     date: "2024-11-28",
     title: "Initial Stable Release",
     description: "The first stable release of Camnova with full-featured note-taking, AI assistant, and offline support.",
-    isLatest: true,
     features: [
       {
         category: "AI Assistant (Angkor AI)",
@@ -335,7 +382,7 @@ export default function ChangelogPage() {
       {/* Footer */}
       <footer className="border-t border-zinc-200 dark:border-zinc-800 py-8">
         <div className="w-full px-4 sm:px-8 lg:px-12 text-center text-sm text-zinc-500 dark:text-zinc-400">
-          <p>© 2024 Camnova. Built with ❤️ in Cambodia.</p>
+          <p>© 2025 Camnova. Built with ❤️ in Cambodia.</p>
         </div>
       </footer>
     </div>

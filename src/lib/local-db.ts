@@ -50,7 +50,6 @@ function openDB(): Promise<IDBDatabase> {
     request.onupgradeneeded = (event) => {
       const database = (event.target as IDBOpenDBRequest).result;
 
-      // Projects store
       if (!database.objectStoreNames.contains(STORES.projects)) {
         const projectStore = database.createObjectStore(STORES.projects, { keyPath: "id" });
         projectStore.createIndex("userId", "userId", { unique: false });
@@ -58,14 +57,12 @@ function openDB(): Promise<IDBDatabase> {
         projectStore.createIndex("isFavorite", "isFavorite", { unique: false });
       }
 
-      // Pending changes store (for offline sync)
       if (!database.objectStoreNames.contains(STORES.pendingChanges)) {
         const changesStore = database.createObjectStore(STORES.pendingChanges, { keyPath: "id" });
         changesStore.createIndex("timestamp", "timestamp", { unique: false });
         changesStore.createIndex("projectId", "projectId", { unique: false });
       }
 
-      // Metadata store (for sync timestamps, etc.)
       if (!database.objectStoreNames.contains(STORES.metadata)) {
         database.createObjectStore(STORES.metadata, { keyPath: "key" });
       }
@@ -74,8 +71,6 @@ function openDB(): Promise<IDBDatabase> {
 
   return dbPromise;
 }
-
-// ============ Projects ============
 
 export async function getAllProjects(): Promise<Project[]> {
   const database = await openDB();
@@ -167,8 +162,6 @@ export async function clearProjects(): Promise<void> {
   });
 }
 
-// ============ Pending Changes (for offline sync) ============
-
 export async function addPendingChange(change: Omit<PendingChange, "id" | "timestamp">): Promise<void> {
   const database = await openDB();
   const fullChange: PendingChange = {
@@ -217,8 +210,6 @@ export async function hasPendingChanges(): Promise<boolean> {
   return changes.length > 0;
 }
 
-// ============ Metadata ============
-
 export async function getMetadata<T>(key: string): Promise<T | null> {
   const database = await openDB();
   return new Promise((resolve, reject) => {
@@ -246,8 +237,6 @@ export async function setMetadata(key: string, value: unknown): Promise<void> {
   });
 }
 
-// ============ Sync Helpers ============
-
 export async function getLastSyncTime(): Promise<number | null> {
   return getMetadata<number>("lastSyncTime");
 }
@@ -264,8 +253,6 @@ export async function setLastProjectId(id: string): Promise<void> {
   return setMetadata("lastProjectId", id);
 }
 
-// ============ Utility ============
-
 export function generateTempId(): string {
   return `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
@@ -274,7 +261,6 @@ export function isTempId(id: string): boolean {
   return id.startsWith("temp-");
 }
 
-// Update task within a project
 export async function updateProjectTask(projectId: string, taskId: string, updates: Partial<Task>): Promise<void> {
   const project = await getProject(projectId);
   if (!project) return;
@@ -288,7 +274,6 @@ export async function updateProjectTask(projectId: string, taskId: string, updat
   await saveProject(project);
 }
 
-// Add task to project
 export async function addProjectTask(projectId: string, task: Task): Promise<void> {
   const project = await getProject(projectId);
   if (!project) return;
@@ -299,7 +284,6 @@ export async function addProjectTask(projectId: string, task: Task): Promise<voi
   await saveProject(project);
 }
 
-// Delete task from project
 export async function deleteProjectTask(projectId: string, taskId: string): Promise<void> {
   const project = await getProject(projectId);
   if (!project) return;
@@ -310,7 +294,6 @@ export async function deleteProjectTask(projectId: string, taskId: string): Prom
   await saveProject(project);
 }
 
-// Update kanban card within a project
 export async function updateProjectKanbanCard(projectId: string, cardId: string, updates: Partial<KanbanCard>): Promise<void> {
   const project = await getProject(projectId);
   if (!project) return;
@@ -324,7 +307,6 @@ export async function updateProjectKanbanCard(projectId: string, cardId: string,
   await saveProject(project);
 }
 
-// Add kanban card to project
 export async function addProjectKanbanCard(projectId: string, card: KanbanCard): Promise<void> {
   const project = await getProject(projectId);
   if (!project) return;
@@ -335,7 +317,6 @@ export async function addProjectKanbanCard(projectId: string, card: KanbanCard):
   await saveProject(project);
 }
 
-// Delete kanban card from project
 export async function deleteProjectKanbanCard(projectId: string, cardId: string): Promise<void> {
   const project = await getProject(projectId);
   if (!project) return;

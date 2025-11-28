@@ -12,16 +12,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Parse pagination params
     const { searchParams } = new URL(request.url);
-    const cursor = searchParams.get("cursor"); // ID of last item for cursor pagination
+    const cursor = searchParams.get("cursor");
     const limitParam = searchParams.get("limit");
     const limit = Math.min(
       Math.max(1, parseInt(limitParam || String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT),
       MAX_LIMIT
     );
 
-    // Build query with cursor-based pagination
     const chats = await prisma.aiChat.findMany({
       where: {
         userId: session.user.id,
@@ -29,10 +27,10 @@ export async function GET(request: NextRequest) {
       orderBy: {
         updatedAt: "desc",
       },
-      take: limit + 1, // Fetch one extra to check if there's more
+      take: limit + 1,
       ...(cursor && {
         cursor: { id: cursor },
-        skip: 1, // Skip the cursor item itself
+        skip: 1,
       }),
       select: {
         id: true,
@@ -45,7 +43,6 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Check if there are more results
     const hasMore = chats.length > limit;
     const items = hasMore ? chats.slice(0, -1) : chats;
     const nextCursor = hasMore ? items[items.length - 1]?.id : null;

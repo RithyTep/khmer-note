@@ -1,6 +1,24 @@
 import { auth } from "@/lib/auth";
-import { rateLimit, getClientId, rateLimitResponse, RATE_LIMITS, RateLimitConfig } from "@/lib/rate-limit";
-import { unauthorizedResponse } from "@/lib/api-response";
+import {
+  rateLimit,
+  getClientId,
+  rateLimitResponse,
+  RATE_LIMITS,
+  RateLimitConfig,
+  ipRateLimit,
+  validateOrigin,
+  checkPayloadSize,
+} from "@/lib/rate-limit";
+import { unauthorizedResponse, badRequestResponse, forbiddenResponse } from "@/lib/api-response";
+
+const ALLOWED_HOSTS = [
+  "localhost",
+  "127.0.0.1",
+  "khmer-note.vercel.app",
+  "camnova.com",
+  "camnova.rithytep.online",
+  "rithytep.online",
+];
 
 export interface AuthenticatedUser {
   id: string;
@@ -48,6 +66,17 @@ export async function requireAuthAndRateLimit(
   endpoint: string,
   config: RateLimitConfig = RATE_LIMITS.api
 ): Promise<GuardResult> {
+  const ipResult = ipRateLimit(request);
+  if (!ipResult.success) {
+    return { success: false, response: rateLimitResponse(ipResult) };
+  }
+
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    if (!validateOrigin(request, ALLOWED_HOSTS)) {
+      return { success: false, response: forbiddenResponse("Invalid request origin") };
+    }
+  }
+
   const authResult = await requireAuth();
   if (!authResult.success) {
     return authResult;
@@ -61,4 +90,15 @@ export async function requireAuthAndRateLimit(
   return { success: true, user: authResult.user };
 }
 
+export function validatePayloadSize(body: string, maxBytes: number = 100000): GuardResult {
+  if (!checkPayloadSize(body, maxBytes)) {
+    return {
+      success: false,
+      response: badRequestResponse(`Payload too large (max ${maxBytes / 1000}KB)`),
+    };
+  }
+  return { success: true };
+}
+
 export { RATE_LIMITS } from "@/lib/rate-limit";
+export { checkPayloadSize } from "@/lib/rate-limit";
