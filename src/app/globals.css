@@ -26,6 +26,14 @@ body {
   background: #d4d4d8;
 }
 
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
+
 /* Checkbox Animation */
 .custom-checkbox input:checked + div {
   background-color: #2563eb;
@@ -42,6 +50,9 @@ body {
   pointer-events: none;
   display: block;
 }
+.dark [contenteditable]:empty:before {
+  color: #52525b;
+}
 [contenteditable]:focus {
   outline: none;
 }
@@ -55,4 +66,56 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   width: 100%;
   height: 100%;
   cursor: pointer;
+}
+
+/* AI Assistant Animations */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.avatar-pulse {
+  animation: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s ease-out;
+}
+
+/* AI Assistant textarea resize */
+.ai-textarea {
+  field-sizing: content;
+  min-height: 56px;
+  max-height: 120px;
+}
+
+/* Focus gradient border effect */
+.focus-gradient-border {
+  position: relative;
+}
+
+.focus-gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(to right, #d97706, #ea580c);
+  border-radius: 0.75rem;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: -1;
+}
+
+.focus-gradient-border:focus-within::before {
+  opacity: 1;
 }

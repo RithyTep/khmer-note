@@ -1,18 +1,10 @@
-/**
- * Simple in-memory rate limiter for API protection
- * Compatible with Vercel Edge/Serverless
- */
-
 interface RateLimitEntry {
   count: number;
   resetTime: number;
 }
 
-// In-memory store (resets on cold start, but still provides protection)
 const rateLimitStore = new Map<string, RateLimitEntry>();
-
-// Clean up expired entries periodically
-const CLEANUP_INTERVAL = 60000; // 1 minute
+const CLEANUP_INTERVAL = 60000;
 let lastCleanup = Date.now();
 
 function cleanup() {
@@ -28,8 +20,8 @@ function cleanup() {
 }
 
 export interface RateLimitConfig {
-  limit: number;      // Max requests
-  window: number;     // Time window in seconds
+  limit: number;
+  window: number;
 }
 
 export interface RateLimitResult {
@@ -39,9 +31,6 @@ export interface RateLimitResult {
   reset: number;
 }
 
-/**
- * Check rate limit for a given identifier
- */
 export function rateLimit(
   identifier: string,
   config: RateLimitConfig = { limit: 60, window: 60 }
@@ -55,7 +44,6 @@ export function rateLimit(
   const entry = rateLimitStore.get(key);
 
   if (!entry || entry.resetTime < now) {
-    // Create new entry
     rateLimitStore.set(key, {
       count: 1,
       resetTime: now + windowMs,
@@ -68,7 +56,6 @@ export function rateLimit(
     };
   }
 
-  // Increment existing entry
   entry.count++;
 
   if (entry.count > config.limit) {
@@ -88,11 +75,7 @@ export function rateLimit(
   };
 }
 
-/**
- * Get client identifier from request
- */
 export function getClientId(request: Request): string {
-  // Try various headers for real IP (Vercel, Cloudflare, etc.)
   const forwarded = request.headers.get("x-forwarded-for");
   const realIp = request.headers.get("x-real-ip");
   const cfIp = request.headers.get("cf-connecting-ip");
@@ -101,18 +84,14 @@ export function getClientId(request: Request): string {
   if (realIp) return realIp;
   if (forwarded) return forwarded.split(",")[0].trim();
 
-  // Fallback to a generic identifier
   return "anonymous";
 }
 
-/**
- * Create rate limit error response with proper headers
- */
 export function rateLimitResponse(result: RateLimitResult): Response {
   return new Response(
     JSON.stringify({
       error: "Too many requests",
-      message: "សូមរង់ចាំមួយភ្លែត មុននឹងព្យាយាមម្តងទៀត", // Please wait before trying again
+      message: "សូមរង់ចាំមួយភ្លែត មុននឹងព្យាយាមម្តងទៀត",
       retryAfter: Math.ceil((result.reset - Date.now()) / 1000),
     }),
     {
@@ -128,14 +107,9 @@ export function rateLimitResponse(result: RateLimitResult): Response {
   );
 }
 
-// Preset configurations for different endpoints
 export const RATE_LIMITS = {
-  // Standard API endpoints
-  api: { limit: 60, window: 60 },      // 60 requests per minute
-  // Read operations (more lenient)
-  read: { limit: 120, window: 60 },    // 120 requests per minute
-  // Write operations (stricter)
-  write: { limit: 30, window: 60 },    // 30 requests per minute
-  // Heavy operations
-  heavy: { limit: 10, window: 60 },    // 10 requests per minute
+  api: { limit: 60, window: 60 },
+  read: { limit: 120, window: 60 },
+  write: { limit: 30, window: 60 },
+  heavy: { limit: 10, window: 60 },
 } as const;

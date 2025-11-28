@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Search, FileText, Users } from "lucide-react";
+import { Search, FileText } from "lucide-react";
 import type { Project } from "@/types";
 
 interface SearchModalProps {
@@ -52,44 +52,44 @@ export function SearchModal({
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-lg rounded-xl shadow-2xl border border-zinc-200 overflow-hidden animate-modal mx-4"
+        className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-xl shadow-2xl border border-zinc-200 dark:border-zinc-700 overflow-hidden animate-modal mx-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center px-4 py-3 border-b border-zinc-100 gap-3">
-          <Search className="w-5 h-5 text-zinc-400" />
+        <div className="flex items-center px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 gap-3">
+          <Search className="w-5 h-5 text-zinc-400 dark:text-zinc-500" />
           <input
             ref={inputRef}
             type="text"
             placeholder="ស្វែងរកឯកសារ កិច្ចការ ឬក្រុម..."
-            className="flex-1 text-sm outline-none placeholder:text-zinc-400 h-6"
+            className="flex-1 text-sm dark:text-zinc-200 outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-600 h-6 bg-transparent"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <span className="text-[10px] bg-zinc-100 text-zinc-400 px-1.5 py-0.5 rounded border border-zinc-200">
+          <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
             ESC
           </span>
         </div>
         <div className="py-2 text-sm max-h-64 overflow-y-auto">
-          <div className="px-4 py-2 text-xs font-semibold text-zinc-400">
+          <div className="px-4 py-2 text-xs font-semibold text-zinc-400 dark:text-zinc-500">
             {query ? "លទ្ធផលស្វែងរក" : "លទ្ធផលថ្មីៗ"}
           </div>
           {filteredProjects.length === 0 ? (
-            <div className="px-4 py-4 text-zinc-400 text-center">
+            <div className="px-4 py-4 text-zinc-400 dark:text-zinc-500 text-center">
               រកមិនឃើញ
             </div>
           ) : (
             filteredProjects.map((project) => (
               <button
                 key={project.id}
-                className="w-full text-left px-4 py-2 hover:bg-zinc-50 flex items-center gap-3 group"
+                className="w-full text-left px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center gap-3 group"
                 onClick={() => {
                   onSelectProject(project.id);
                   onClose();
                   setQuery("");
                 }}
               >
-                <FileText className="w-4 h-4 text-zinc-400 group-hover:text-zinc-700" />
-                <span className="truncate">{project.title}</span>
+                <FileText className="w-4 h-4 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300" />
+                <span className="truncate dark:text-zinc-300">{project.title}</span>
                 {project.isFavorite && (
                   <span className="text-yellow-500 text-xs">★</span>
                 )}
@@ -97,7 +97,7 @@ export function SearchModal({
             ))
           )}
         </div>
-        <div className="bg-zinc-50 px-4 py-2 border-t border-zinc-100 text-xs text-zinc-400 flex justify-between">
+        <div className="bg-zinc-50 dark:bg-zinc-900/50 px-4 py-2 border-t border-zinc-100 dark:border-zinc-800 text-xs text-zinc-400 dark:text-zinc-500 flex justify-between">
           <span>ស្វែងរកកម្រិតខ្ពស់</span>
           <span>Khmer Note</span>
         </div>

@@ -1,12 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback, useMemo, memo, lazy, Suspense, useEffect } from "react";
 import { signOut } from "next-auth/react";
 import { Sidebar } from "@/components/Sidebar";
-import { SearchModal } from "@/components/SearchModal";
-import { ProjectContent } from "@/components/ProjectContent";
 import { Toast } from "@/components/Toast";
 import { useProjects } from "@/hooks/useProject";
+import { useProjectSelection } from "@/hooks/useProjectSelection";
+import { useKeyboardShortcut } from "@/hooks/useClickOutside";
+import { getCachedProject } from "@/lib/cache-client";
+import { UI_TEXT, DEFAULT_VALUES } from "@/lib/constants";
+import { ProjectContentSkeleton } from "@/components/Skeleton";
+
+const SearchModal = lazy(() => import("@/components/SearchModal").then(mod => ({ default: mod.SearchModal })));
+const ProjectContent = lazy(() => import("@/components/ProjectContent").then(mod => ({ default: mod.ProjectContent })));
 
 interface User {
   id: string;
@@ -17,112 +23,182 @@ interface User {
 
 interface HomeClientProps {
   user: User;
+  initialProjectId?: string;
 }
 
-export function HomeClient({ user }: HomeClientProps) {
+const EmptyState = memo(function EmptyState({ onCreateProject }: { onCreateProject: () => void }) {
+  const { HOME } = UI_TEXT;
+
+  return (
+    <main className="flex-1 flex flex-col items-center justify-center bg-white dark:bg-zinc-900">
+      <div className="text-center">
+        <h2 className="text-2xl font-semibold text-zinc-700 dark:text-zinc-200 mb-4">
+          {HOME.WELCOME}
+        </h2>
+        <p className="text-zinc-500 dark:text-zinc-400 mb-6">{HOME.CREATE_FIRST_NOTE}</p>
+        <button
+          onClick={onCreateProject}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          {HOME.CREATE_NEW_NOTE}
+        </button>
+      </div>
+    </main>
+  );
+});
+
+const SelectProjectPrompt = memo(function SelectProjectPrompt() {
+  return (
+    <main className="flex-1 flex flex-col items-center justify-center bg-white dark:bg-zinc-900">
+      <div className="text-zinc-400">{UI_TEXT.HOME.SELECT_NOTE}</div>
+    </main>
+  );
+});
+
+function SearchModalFallback() {
+  return null;
+}
+
+export function HomeClient({ user, initialProjectId }: HomeClientProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
-  const { projects, loading, createProject } = useProjects();
+  const { projects, loading, createProject, refetch } = useProjects();
+  const { selectedId, selectProject, handleDelete, handleToggleFavorite, isReady } =
+    useProjectSelection({ projects, onRefetch: refetch, initialProjectId });
 
-  // Select first project by default
+  useKeyboardShortcut("k", () => setSearchOpen(true), { meta: true });
+
   useEffect(() => {
-    if (!selectedProjectId && projects.length > 0) {
-      setSelectedProjectId(projects[0].id);
+    if (!selectedId) {
+      document.title = "Khmer Note";
     }
-  }, [projects, selectedProjectId]);
+  }, [selectedId]);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-    };
+  const showToast = useCallback((message: string) => setToast(message), []);
+  const { TOAST } = UI_TEXT;
 
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  const handleCreateProject = useCallback(async () => {
+    const project = await createProject(DEFAULT_VALUES.NEW_PROJECT_TITLE, user.id);
+    selectProject(project.id);
+    showToast(TOAST.PROJECT_CREATED);
+  }, [createProject, user.id, selectProject, showToast, TOAST]);
 
-  const handleCreateProject = useCallback(() => {
-    const project = createProject("គម្រោងថ្មី", user.id);
-    setSelectedProjectId(project.id);
-    setToastMessage("គម្រោងថ្មីបានបង្កើត");
-  }, [createProject, user.id]);
+  const handleDuplicateProject = useCallback(
+    async (projectId: string) => {
+      const project = getCachedProject(projectId) || projects.find((p) => p.id === projectId);
+      if (!project) return;
 
-  const showToast = useCallback((message: string) => {
-    setToastMessage(message);
-  }, []);
+      const newProject = await createProject(
+        `${project.title} ${DEFAULT_VALUES.DUPLICATE_SUFFIX}`,
+        user.id,
+        project.content as Record<string, unknown>[] | undefined
+      );
+      selectProject(newProject.id);
+      showToast(TOAST.PROJECT_DUPLICATED);
+    },
+    [projects, createProject, user.id, selectProject, showToast, TOAST]
+  );
 
-  const handleSignOut = () => {
+  const handleRenameProject = useCallback(
+    (projectId: string) => {
+      selectProject(projectId);
+      showToast(TOAST.CLICK_TO_RENAME);
+    },
+    [selectProject, showToast, TOAST]
+  );
+
+  const handleDeleteProject = useCallback(
+    (projectId: string) => {
+      handleDelete(projectId);
+      showToast(TOAST.PROJECT_DELETED);
+    },
+    [handleDelete, showToast, TOAST]
+  );
+
+  const handleFavorite = useCallback(
+    async (projectId: string) => {
+      const newValue = await handleToggleFavorite(projectId);
+      showToast(newValue ? TOAST.ADDED_TO_FAVORITES : TOAST.REMOVED_FROM_FAVORITES);
+    },
+    [handleToggleFavorite, showToast, TOAST]
+  );
+
+  const handleSearchSelect = useCallback(
+    (id: string) => {
+      selectProject(id);
+      setSearchOpen(false);
+    },
+    [selectProject]
+  );
+
+  const handleSignOut = useCallback(() => {
     signOut({ callbackUrl: "/login" });
-  };
+  }, []);
 
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-zinc-400">កំពុងផ្ទុក...</div>
-      </div>
-    );
-  }
+  const toggleSidebar = useCallback(() => setSidebarOpen((prev) => !prev), []);
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+  const openSearch = useCallback(() => setSearchOpen(true), []);
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
+  const closeToast = useCallback(() => setToast(null), []);
+
+  const renderMainContent = () => {
+    if (selectedId) {
+      return (
+        <Suspense fallback={<ProjectContentSkeleton />}>
+          <ProjectContent
+            projectId={selectedId}
+            onToggleSidebar={toggleSidebar}
+            onShowToast={showToast}
+          />
+        </Suspense>
+      );
+    }
+
+    if (!isReady || loading) {
+      return <ProjectContentSkeleton />;
+    }
+
+    if (projects.length === 0) {
+      return <EmptyState onCreateProject={handleCreateProject} />;
+    }
+
+    return <SelectProjectPrompt />;
+  };
 
   return (
     <>
-      {/* Search Modal */}
-      <SearchModal
-        isOpen={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        projects={projects}
-        onSelectProject={(id) => {
-          setSelectedProjectId(id);
-          setSearchOpen(false);
-        }}
-      />
+      {searchOpen && (
+        <Suspense fallback={<SearchModalFallback />}>
+          <SearchModal
+            isOpen={searchOpen}
+            onClose={closeSearch}
+            projects={projects}
+            onSelectProject={handleSearchSelect}
+          />
+        </Suspense>
+      )}
 
-      {/* Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        onOpenSearch={() => setSearchOpen(true)}
+        onClose={closeSidebar}
+        onOpenSearch={openSearch}
         projects={projects}
-        selectedProjectId={selectedProjectId}
-        onSelectProject={setSelectedProjectId}
+        selectedProjectId={selectedId}
+        onSelectProject={selectProject}
         onCreateProject={handleCreateProject}
+        onToggleFavorite={handleFavorite}
+        onDuplicateProject={handleDuplicateProject}
+        onRenameProject={handleRenameProject}
+        onDeleteProject={handleDeleteProject}
         user={user}
         onSignOut={handleSignOut}
       />
 
-      {/* Main Content */}
-      {selectedProjectId ? (
-        <ProjectContent
-          projectId={selectedProjectId}
-          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-          onShowToast={showToast}
-        />
-      ) : (
-        <main className="flex-1 flex flex-col items-center justify-center bg-white">
-          <div className="text-center">
-            <h2 className="text-2xl font-semibold text-zinc-700 mb-4">
-              សូមស្វាគមន៍មកកាន់ Khmer Note
-            </h2>
-            <p className="text-zinc-500 mb-6">
-              សូមជ្រើសរើសគម្រោងពីបញ្ជីខាងឆ្វេង ឬបង្កើតគម្រោងថ្មី
-            </p>
-            <button
-              onClick={handleCreateProject}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              បង្កើតគម្រោងថ្មី
-            </button>
-          </div>
-        </main>
-      )}
+      {renderMainContent()}
 
-      {/* Toast */}
-      <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
+      <Toast message={toast} onClose={closeToast} />
     </>
   );
 }

@@ -37,7 +37,9 @@ export interface Project {
   id: string;
   title: string;
   description: string | null;
+  content: Record<string, unknown>[] | null;
   emoji: string;
+  cover: string | null;
   status: Status;
   dueDate: Date | null;
   isFavorite: boolean;
@@ -50,7 +52,6 @@ export interface Project {
   updatedAt: Date;
 }
 
-// API Request/Response types
 export interface CreateProjectInput {
   title: string;
   description?: string;
@@ -64,7 +65,9 @@ export interface CreateProjectInput {
 export interface UpdateProjectInput {
   title?: string;
   description?: string;
+  content?: Record<string, unknown>[];
   emoji?: string;
+  cover?: string | null;
   status?: Status;
   dueDate?: string | null;
   assigneeId?: string | null;
@@ -103,7 +106,6 @@ export interface MoveKanbanCardInput {
   order?: number;
 }
 
-// Status display configuration
 export const STATUS_CONFIG = {
   NOT_STARTED: {
     text: "មិនទាន់ចាប់ផ្តើម",
@@ -119,7 +121,6 @@ export const STATUS_CONFIG = {
   },
 } as const;
 
-// Kanban column display configuration
 export const KANBAN_COLUMN_CONFIG = {
   TODO: {
     name: "To Do",
@@ -136,7 +137,6 @@ export const KANBAN_COLUMN_CONFIG = {
   },
 } as const;
 
-// Priority display configuration
 export const PRIORITY_CONFIG = {
   HIGH: {
     label: "H",

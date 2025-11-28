@@ -1,379 +1,470 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import type {
-  Project,
-  User,
-  Task,
-  KanbanCard,
-  UpdateProjectInput,
-  CreateTaskInput,
-  UpdateTaskInput,
-  CreateKanbanCardInput,
-  UpdateKanbanCardInput,
-} from "@/types";
-import { KanbanColumn, Status } from "@prisma/client";
+import type { Project, Task, KanbanCard, UpdateProjectInput } from "@/types";
+import { Status, KanbanColumn, Priority } from "@prisma/client";
+import {
+  getAllProjects,
+  getProject,
+  saveProject,
+  deleteProject as deleteProjectFromDB,
+  generateTempId,
+  isTempId,
+  getLastProjectId as getLastProjectIdFromDB,
+  setLastProjectId as setLastProjectIdToDB,
+  updateProjectTask,
+  addProjectTask,
+  deleteProjectTask,
+  updateProjectKanbanCard,
+  addProjectKanbanCard,
+  deleteProjectKanbanCard,
+} from "@/lib/local-db";
+import { sync, initialSync, startSyncInterval, addSyncListener, needsSync } from "@/lib/sync-service";
+import { DEFAULT_VALUES } from "@/lib/constants";
 
-// Helper to generate temporary IDs
-const tempId = () => `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const STATUS_CYCLE: Status[] = ["NOT_STARTED", "IN_PROGRESS", "COMPLETED"];
+
+// ============ Single Project Hook ============
 
 export function useProject(projectId: string | null) {
   const [project, setProject] = useState<Project | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+  // Use ref to avoid dependency on project object in callbacks
+  const projectRef = useRef<Project | null>(null);
 
-  const fetchProject = useCallback(async () => {
+  // Keep ref in sync with state
+  useEffect(() => {
+    projectRef.current = project;
+  }, [project]);
+
+  // Load project from local DB
+  const loadProject = useCallback(async () => {
     if (!projectId) {
       setProject(null);
-      setLoading(false);
       return;
     }
 
+    setLoading(true);
     try {
-      setLoading(true);
-      const res = await fetch(`/api/projects/${projectId}`);
-      if (!res.ok) throw new Error("Failed to fetch project");
-      const data = await res.json();
-      setProject(data);
-      setError(null);
+      const localProject = await getProject(projectId);
+      if (mountedRef.current) {
+        setProject(localProject);
+        setError(null);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err.message : "Failed to load project");
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   }, [projectId]);
 
   useEffect(() => {
-    fetchProject();
-  }, [fetchProject]);
+    mountedRef.current = true;
+    loadProject();
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [loadProject]);
 
-  // OPTIMISTIC: Update project - instant UI update
+  // Update project locally - stable callback that doesn't depend on project state
   const updateProject = useCallback(
-    (data: UpdateProjectInput) => {
-      if (!projectId || !project) return;
+    async (data: UpdateProjectInput) => {
+      const currentProject = projectRef.current;
+      if (!projectId || !currentProject) return;
 
-      // Optimistic update
-      setProject((prev) => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          ...data,
-          dueDate: data.dueDate ? new Date(data.dueDate) : data.dueDate === null ? null : prev.dueDate,
-          updatedAt: new Date(),
-        } as Project;
-      });
+      const updated: Project = {
+        ...currentProject,
+        title: data.title ?? currentProject.title,
+        description: data.description !== undefined ? data.description : currentProject.description,
+        content: data.content !== undefined ? data.content : currentProject.content,
+        emoji: data.emoji ?? currentProject.emoji,
+        cover: data.cover !== undefined ? data.cover : currentProject.cover,
+        status: data.status ?? currentProject.status,
+        dueDate: data.dueDate !== undefined
+          ? (data.dueDate ? new Date(data.dueDate) : null)
+          : currentProject.dueDate,
+        isFavorite: data.isFavorite ?? currentProject.isFavorite,
+        assigneeId: data.assigneeId !== undefined ? data.assigneeId : currentProject.assigneeId,
+        updatedAt: new Date(),
+      };
 
-      // Fire and forget API call
-      fetch(`/api/projects/${projectId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).catch(console.error);
+      setProject(updated);
+      await saveProject(updated);
     },
-    [projectId, project]
+    [projectId] // Only depends on projectId, not the entire project object
   );
 
-  // OPTIMISTIC: Cycle status
+  // Cycle through statuses - stable callback
   const cycleStatus = useCallback(() => {
-    if (!project) return;
-    const statusOrder: Status[] = ["NOT_STARTED", "IN_PROGRESS", "COMPLETED"];
-    const currentIndex = statusOrder.indexOf(project.status);
-    const nextStatus = statusOrder[(currentIndex + 1) % statusOrder.length];
+    const currentProject = projectRef.current;
+    if (!currentProject) return;
+    const currentIdx = STATUS_CYCLE.indexOf(currentProject.status);
+    const nextStatus = STATUS_CYCLE[(currentIdx + 1) % STATUS_CYCLE.length];
     updateProject({ status: nextStatus });
-  }, [project, updateProject]);
+  }, [updateProject]);
 
-  // OPTIMISTIC: Add task - instant UI update with temp ID
+  // ============ Task Operations ============
+
   const addTask = useCallback(
-    (input: Omit<CreateTaskInput, "projectId">) => {
-      if (!projectId || !project) return;
+    async (text: string, tag?: string) => {
+      const currentProject = projectRef.current;
+      if (!projectId || !currentProject) return null;
+
+      const maxOrder = currentProject.tasks.length > 0
+        ? Math.max(...currentProject.tasks.map(t => t.order))
+        : -1;
 
       const newTask: Task = {
-        id: tempId(),
-        text: input.text,
-        tag: input.tag || "New",
+        id: generateTempId(),
+        text,
+        tag: tag ?? "New",
         checked: false,
-        order: project.tasks.length,
+        order: maxOrder + 1,
         projectId,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      // Optimistic update
-      setProject((prev) =>
-        prev ? { ...prev, tasks: [...prev.tasks, newTask] } : null
-      );
+      const updatedProject = {
+        ...currentProject,
+        tasks: [...currentProject.tasks, newTask],
+        updatedAt: new Date(),
+      };
 
-      // Fire and forget
-      fetch("/api/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...input, projectId }),
-      })
-        .then((res) => res.json())
-        .then((task) => {
-          // Replace temp ID with real ID
-          setProject((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  tasks: prev.tasks.map((t) =>
-                    t.id === newTask.id ? task : t
-                  ),
-                }
-              : null
-          );
-        })
-        .catch(console.error);
+      setProject(updatedProject);
+      await saveProject(updatedProject);
+      return newTask;
     },
-    [projectId, project]
+    [projectId]
   );
 
-  // OPTIMISTIC: Update task
   const updateTask = useCallback(
-    (taskId: string, data: UpdateTaskInput) => {
-      // Optimistic update
-      setProject((prev) =>
-        prev
-          ? {
-              ...prev,
-              tasks: prev.tasks.map((t) =>
-                t.id === taskId ? { ...t, ...data, updatedAt: new Date() } : t
-              ),
-            }
-          : null
-      );
+    async (taskId: string, updates: Partial<Task>) => {
+      const currentProject = projectRef.current;
+      if (!projectId || !currentProject) return;
 
-      // Fire and forget
-      fetch(`/api/tasks/${taskId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).catch(console.error);
+      const taskIndex = currentProject.tasks.findIndex(t => t.id === taskId);
+      if (taskIndex === -1) return;
+
+      const updatedTasks = [...currentProject.tasks];
+      updatedTasks[taskIndex] = { ...updatedTasks[taskIndex], ...updates, updatedAt: new Date() };
+
+      const updatedProject = {
+        ...currentProject,
+        tasks: updatedTasks,
+        updatedAt: new Date(),
+      };
+
+      setProject(updatedProject);
+      await saveProject(updatedProject);
     },
-    []
+    [projectId]
   );
 
-  // OPTIMISTIC: Delete task
-  const deleteTask = useCallback((taskId: string) => {
-    // Optimistic update
-    setProject((prev) =>
-      prev
-        ? { ...prev, tasks: prev.tasks.filter((t) => t.id !== taskId) }
-        : null
-    );
+  const deleteTask = useCallback(
+    async (taskId: string) => {
+      const currentProject = projectRef.current;
+      if (!projectId || !currentProject) return;
 
-    // Fire and forget
-    fetch(`/api/tasks/${taskId}`, { method: "DELETE" }).catch(console.error);
-  }, []);
+      const updatedProject = {
+        ...currentProject,
+        tasks: currentProject.tasks.filter(t => t.id !== taskId),
+        updatedAt: new Date(),
+      };
 
-  // OPTIMISTIC: Toggle task
+      setProject(updatedProject);
+      await saveProject(updatedProject);
+    },
+    [projectId]
+  );
+
   const toggleTask = useCallback(
-    (taskId: string) => {
-      const task = project?.tasks.find((t) => t.id === taskId);
-      if (!task) return;
-      updateTask(taskId, { checked: !task.checked });
+    async (taskId: string) => {
+      const currentProject = projectRef.current;
+      if (!currentProject) return;
+      const task = currentProject.tasks.find(t => t.id === taskId);
+      if (task) {
+        await updateTask(taskId, { checked: !task.checked });
+      }
     },
-    [project, updateTask]
+    [updateTask]
   );
 
-  // OPTIMISTIC: Add kanban card
-  const addKanbanCard = useCallback(
-    (input: Omit<CreateKanbanCardInput, "projectId">) => {
-      if (!projectId || !project) return;
+  // ============ Kanban Operations ============
 
-      const column = input.column || "TODO";
-      const cardsInColumn = project.kanbanCards.filter((c) => c.column === column);
+  const addKanbanCard = useCallback(
+    async (text: string, column: KanbanColumn = "TODO", priority?: Priority) => {
+      const currentProject = projectRef.current;
+      if (!projectId || !currentProject) return null;
+
+      const cardsInColumn = currentProject.kanbanCards.filter(c => c.column === column);
+      const maxOrder = cardsInColumn.length > 0
+        ? Math.max(...cardsInColumn.map(c => c.order))
+        : -1;
 
       const newCard: KanbanCard = {
-        id: tempId(),
-        text: input.text,
-        column: column as KanbanColumn,
-        priority: input.priority || null,
-        order: cardsInColumn.length,
+        id: generateTempId(),
+        text,
+        column,
+        priority: priority ?? null,
+        order: maxOrder + 1,
         projectId,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      // Optimistic update
-      setProject((prev) =>
-        prev ? { ...prev, kanbanCards: [...prev.kanbanCards, newCard] } : null
-      );
+      const updatedProject = {
+        ...currentProject,
+        kanbanCards: [...currentProject.kanbanCards, newCard],
+        updatedAt: new Date(),
+      };
 
-      // Fire and forget
-      fetch("/api/kanban", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...input, projectId }),
-      })
-        .then((res) => res.json())
-        .then((card) => {
-          // Replace temp ID with real ID
-          setProject((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  kanbanCards: prev.kanbanCards.map((c) =>
-                    c.id === newCard.id ? card : c
-                  ),
-                }
-              : null
-          );
-        })
-        .catch(console.error);
+      setProject(updatedProject);
+      await saveProject(updatedProject);
+      return newCard;
     },
-    [projectId, project]
+    [projectId]
   );
 
-  // OPTIMISTIC: Update kanban card
   const updateKanbanCard = useCallback(
-    (cardId: string, data: UpdateKanbanCardInput) => {
-      // Optimistic update
-      setProject((prev) =>
-        prev
-          ? {
-              ...prev,
-              kanbanCards: prev.kanbanCards.map((c) =>
-                c.id === cardId ? { ...c, ...data, updatedAt: new Date() } : c
-              ),
-            }
-          : null
-      );
+    async (cardId: string, updates: Partial<KanbanCard>) => {
+      const currentProject = projectRef.current;
+      if (!projectId || !currentProject) return;
 
-      // Fire and forget
-      fetch(`/api/kanban/${cardId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).catch(console.error);
+      const cardIndex = currentProject.kanbanCards.findIndex(c => c.id === cardId);
+      if (cardIndex === -1) return;
+
+      const updatedCards = [...currentProject.kanbanCards];
+      updatedCards[cardIndex] = { ...updatedCards[cardIndex], ...updates, updatedAt: new Date() };
+
+      const updatedProject = {
+        ...currentProject,
+        kanbanCards: updatedCards,
+        updatedAt: new Date(),
+      };
+
+      setProject(updatedProject);
+      await saveProject(updatedProject);
     },
-    []
+    [projectId]
   );
 
-  // OPTIMISTIC: Delete kanban card
-  const deleteKanbanCard = useCallback((cardId: string) => {
-    // Optimistic update
-    setProject((prev) =>
-      prev
-        ? {
-            ...prev,
-            kanbanCards: prev.kanbanCards.filter((c) => c.id !== cardId),
-          }
-        : null
-    );
+  const deleteKanbanCard = useCallback(
+    async (cardId: string) => {
+      const currentProject = projectRef.current;
+      if (!projectId || !currentProject) return;
 
-    // Fire and forget
-    fetch(`/api/kanban/${cardId}`, { method: "DELETE" }).catch(console.error);
-  }, []);
+      const updatedProject = {
+        ...currentProject,
+        kanbanCards: currentProject.kanbanCards.filter(c => c.id !== cardId),
+        updatedAt: new Date(),
+      };
 
-  // OPTIMISTIC: Move kanban card
+      setProject(updatedProject);
+      await saveProject(updatedProject);
+    },
+    [projectId]
+  );
+
   const moveKanbanCard = useCallback(
-    (cardId: string, direction: -1 | 1) => {
-      const card = project?.kanbanCards.find((c) => c.id === cardId);
-      if (!card) return;
-
-      const columns: KanbanColumn[] = ["TODO", "PROGRESS", "DONE"];
-      const currentIndex = columns.indexOf(card.column);
-      const newIndex = currentIndex + direction;
-
-      if (newIndex < 0 || newIndex >= columns.length) return;
-
-      const newColumn = columns[newIndex];
-      updateKanbanCard(cardId, { column: newColumn });
+    async (cardId: string, column: KanbanColumn, order?: number) => {
+      await updateKanbanCard(cardId, { column, order });
     },
-    [project, updateKanbanCard]
+    [updateKanbanCard]
   );
-
-  // OPTIMISTIC: Reset kanban
-  const resetKanban = useCallback(() => {
-    if (!projectId) return;
-
-    // Optimistic update
-    setProject((prev) => (prev ? { ...prev, kanbanCards: [] } : null));
-
-    // Fire and forget
-    fetch(`/api/kanban?projectId=${projectId}`, {
-      method: "DELETE",
-    }).catch(console.error);
-  }, [projectId]);
 
   return {
     project,
     loading,
     error,
-    refetch: fetchProject,
+    refetch: loadProject,
     updateProject,
     cycleStatus,
-    // Tasks
+    // Task operations
     addTask,
     updateTask,
     deleteTask,
     toggleTask,
-    // Kanban
+    // Kanban operations
     addKanbanCard,
     updateKanbanCard,
     deleteKanbanCard,
     moveKanbanCard,
-    resetKanban,
   };
 }
 
-// Hook for projects list with optimistic updates
+// ============ Projects List Hook ============
+
 export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncStatus, setSyncStatus] = useState<string>("idle");
+  const initializedRef = useRef(false);
 
-  const fetchProjects = useCallback(() => {
-    setLoading(true);
-    fetch("/api/projects")
-      .then((res) => res.ok ? res.json() : [])
-      .then(setProjects)
-      .catch(console.error)
-      .finally(() => setLoading(false));
+  // Load projects from local DB
+  const loadProjects = useCallback(async () => {
+    try {
+      const localProjects = await getAllProjects();
+      setProjects(localProjects);
+    } catch (err) {
+      console.error("Failed to load projects:", err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  // Initialize: load from local DB, then sync if needed
   useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
+    if (initializedRef.current) return;
+    initializedRef.current = true;
 
-  // OPTIMISTIC: Create project
-  const createProject = useCallback((title: string, userId: string) => {
-    const newProject: Project = {
-      id: tempId(),
-      title,
-      description: null,
-      emoji: "📝",
-      status: "NOT_STARTED" as Status,
-      dueDate: null,
-      isFavorite: false,
-      userId,
-      assigneeId: null,
-      assignee: null,
-      tasks: [],
-      kanbanCards: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    const init = async () => {
+      // First, load from local DB (instant)
+      await loadProjects();
+
+      // Then check if we need to sync with server
+      const shouldSync = await needsSync();
+      if (shouldSync) {
+        const hasLocalData = (await getAllProjects()).length > 0;
+        if (hasLocalData) {
+          // We have local data, do a background sync
+          sync();
+        } else {
+          // No local data, do initial sync
+          await initialSync();
+          await loadProjects();
+        }
+      }
+
+      // Start sync interval
+      startSyncInterval();
     };
 
-    // Optimistic update
-    setProjects((prev) => [newProject, ...prev]);
+    init();
 
-    // Fire API and update with real ID
-    fetch("/api/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title }),
-    })
-      .then((res) => res.json())
-      .then((project) => {
-        setProjects((prev) =>
-          prev.map((p) => (p.id === newProject.id ? project : p))
-        );
-      })
-      .catch(console.error);
+    // Listen for sync status changes
+    const unsubscribe = addSyncListener((status) => {
+      setSyncStatus(status);
+      if (status === "success") {
+        loadProjects();
+      }
+    });
 
-    return newProject;
+    return () => unsubscribe();
+  }, [loadProjects]);
+
+  // Create project locally
+  const createProject = useCallback(
+    async (title: string, userId: string, content?: Record<string, unknown>[]) => {
+      const newProject: Project = {
+        id: generateTempId(),
+        title,
+        description: null,
+        content: content ?? null,
+        emoji: DEFAULT_VALUES.EMOJI,
+        cover: null,
+        status: "NOT_STARTED",
+        dueDate: null,
+        isFavorite: false,
+        userId,
+        assigneeId: null,
+        assignee: null,
+        tasks: [],
+        kanbanCards: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Update state immediately
+      setProjects((prev) => [newProject, ...prev]);
+
+      // Save to local DB
+      await saveProject(newProject);
+      await setLastProjectIdToDB(newProject.id);
+
+      return newProject;
+    },
+    []
+  );
+
+  // Delete project locally
+  const deleteProjectLocal = useCallback(async (projectId: string) => {
+    // Update state immediately
+    setProjects((prev) => prev.filter((p) => p.id !== projectId));
+
+    // Delete from local DB
+    await deleteProjectFromDB(projectId);
   }, []);
 
-  return { projects, loading, refetch: fetchProjects, createProject };
+  // Duplicate project
+  const duplicateProject = useCallback(
+    async (projectId: string, userId: string) => {
+      const original = await getProject(projectId);
+      if (!original) return null;
+
+      const duplicated: Project = {
+        ...original,
+        id: generateTempId(),
+        title: `${original.title} (ច្បាប់ចម្លង)`,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        tasks: original.tasks.map(t => ({ ...t, id: generateTempId() })),
+        kanbanCards: original.kanbanCards.map(c => ({ ...c, id: generateTempId() })),
+      };
+
+      setProjects((prev) => [duplicated, ...prev]);
+      await saveProject(duplicated);
+
+      return duplicated;
+    },
+    []
+  );
+
+  // Toggle favorite
+  const toggleFavorite = useCallback(async (projectId: string) => {
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    const updated = { ...project, isFavorite: !project.isFavorite, updatedAt: new Date() };
+
+    setProjects((prev) =>
+      prev.map((p) => (p.id === projectId ? updated : p))
+    );
+
+    await saveProject(updated);
+  }, [projects]);
+
+  // Manual sync
+  const forceSync = useCallback(async () => {
+    await sync(true);
+    await loadProjects();
+  }, [loadProjects]);
+
+  return {
+    projects,
+    loading,
+    syncStatus,
+    refetch: loadProjects,
+    createProject,
+    deleteProject: deleteProjectLocal,
+    duplicateProject,
+    toggleFavorite,
+    forceSync,
+  };
+}
+
+// ============ Last Project ID ============
+
+export async function getLastProjectId(): Promise<string | null> {
+  return getLastProjectIdFromDB();
+}
+
+export async function setLastProjectId(id: string): Promise<void> {
+  return setLastProjectIdToDB(id);
 }

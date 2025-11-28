@@ -3,32 +3,27 @@ import { redirect } from "next/navigation";
 
 export default async function LoginPage() {
   const session = await auth();
+  const isLocalDev = process.env.NODE_ENV === "development";
 
-  // If already logged in, redirect to home
   if (session?.user) {
     redirect("/");
   }
 
   return (
     <div className="bg-white text-gray-900 min-h-screen flex flex-col lg:flex-row relative overflow-hidden selection:bg-blue-100">
-      {/* Left Side - Branding (Desktop Only) */}
       <div className="hidden lg:flex lg:w-1/2 xl:w-[55%] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden">
-        {/* Decorative Elements */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-20 w-72 h-72 bg-blue-500 rounded-full blur-3xl" />
           <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500 rounded-full blur-3xl" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-indigo-500 rounded-full blur-3xl" />
         </div>
 
-        {/* Grid Pattern */}
         <div className="absolute inset-0 opacity-5" style={{
           backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
           backgroundSize: '50px 50px'
         }} />
 
-        {/* Content */}
         <div className="relative z-10 flex flex-col justify-center items-center text-center px-12 xl:px-20 w-full">
-          {/* Logo */}
           <div className="flex items-center gap-4 mb-12">
             <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center shadow-2xl">
               <span className="font-serif font-bold text-3xl text-gray-900">K</span>
@@ -36,7 +31,6 @@ export default async function LoginPage() {
             <span className="text-white text-2xl font-semibold tracking-tight">Khmer Note</span>
           </div>
 
-          {/* Tagline */}
           <h1 className="text-4xl xl:text-5xl font-bold text-white leading-tight mb-6">
             កំណត់ត្រារបស់អ្នក
             <br />
@@ -50,7 +44,6 @@ export default async function LoginPage() {
             ចូលគណនីដើម្បីចាប់ផ្តើម។
           </p>
 
-          {/* Feature List */}
           <div className="space-y-4 text-left">
             <div className="flex items-center gap-3 text-gray-300">
               <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
@@ -79,15 +72,12 @@ export default async function LoginPage() {
           </div>
         </div>
 
-        {/* Bottom Decoration */}
         <div className="absolute bottom-8 left-0 right-0 text-center text-gray-600 text-sm">
           © 2024 Khmer Note. All rights reserved.
         </div>
       </div>
 
-      {/* Right Side - Auth Form */}
       <div className="flex-1 lg:w-1/2 xl:w-[45%] flex flex-col relative">
-        {/* Mobile Navbar */}
         <nav className="lg:hidden fixed top-0 left-0 w-full p-4 flex items-center gap-3 z-50 bg-white/80 backdrop-blur-sm">
           <div className="w-8 h-8 bg-gray-900 rounded-[4px] flex items-center justify-center text-white shrink-0">
             <span className="font-serif font-bold text-lg">K</span>
@@ -113,7 +103,6 @@ export default async function LoginPage() {
           </div>
         </nav>
 
-        {/* Desktop Top Bar */}
         <nav className="hidden lg:flex fixed top-0 right-0 w-1/2 xl:w-[45%] p-6 items-center justify-end gap-4 z-50">
           <div className="flex items-center text-gray-500 hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors cursor-pointer gap-2">
             <svg
@@ -150,7 +139,6 @@ export default async function LoginPage() {
           </div>
         </nav>
 
-        {/* Background Skeletons (Mobile Only) */}
         <div className="lg:hidden absolute inset-0 flex justify-center pt-32 px-4 -z-10 opacity-40 select-none pointer-events-none">
           <div className="w-full max-w-2xl flex flex-col gap-4">
             <div className="h-10 bg-gray-100 w-1/3 rounded-md mb-6"></div>
@@ -168,16 +156,12 @@ export default async function LoginPage() {
           </div>
         </div>
 
-        {/* Main Content Centered */}
         <main className="flex-grow flex flex-col p-4 sm:p-6 lg:p-8 xl:p-12 w-full items-center justify-center pt-20 lg:pt-0">
-          {/* Auth Card */}
           <div className="w-full max-w-[420px] lg:max-w-[400px] xl:max-w-[420px] bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] lg:shadow-none border border-gray-100 lg:border-0 p-8 sm:p-10 lg:p-0 flex flex-col items-center">
-            {/* Workspace Icon */}
             <div className="w-14 h-14 lg:w-16 lg:h-16 bg-gray-100 rounded-xl text-gray-600 flex items-center justify-center text-3xl lg:text-4xl font-semibold mb-6">
               K
             </div>
 
-            {/* Title */}
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight text-center text-gray-900 mb-2 leading-tight">
               ចូលគណនីដើម្បីប្រើប្រាស់
             </h1>
@@ -185,7 +169,28 @@ export default async function LoginPage() {
               <span className="font-bold text-gray-900">Khmer Note</span>
             </p>
 
-            {/* Google Sign In Button */}
+            {isLocalDev && (
+              <form
+                action={async () => {
+                  "use server";
+                  await signIn("local-dev", { redirectTo: "/" });
+                }}
+                className="w-full mb-4"
+              >
+                <button
+                  type="submit"
+                  className="w-full flex items-center justify-center gap-3 px-4 py-3.5 lg:py-4 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all shadow-sm hover:shadow"
+                >
+                  <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                  </svg>
+                  <span className="text-sm lg:text-base font-medium">
+                    Local Development Login
+                  </span>
+                </button>
+              </form>
+            )}
+
             <form
               action={async () => {
                 "use server";
@@ -221,21 +226,29 @@ export default async function LoginPage() {
               </button>
             </form>
 
-            <div className="w-full flex items-center gap-4 my-6 lg:my-8">
-              <hr className="flex-1 border-gray-200" />
-              <span className="text-xs text-gray-400 uppercase tracking-wider">ឬ</span>
-              <hr className="flex-1 border-gray-200" />
-            </div>
+            {isLocalDev ? (
+              <div className="w-full flex items-center gap-4 my-6 lg:my-8">
+                <hr className="flex-1 border-gray-200" />
+                <span className="text-xs text-emerald-600 font-medium">DEV MODE</span>
+                <hr className="flex-1 border-gray-200" />
+              </div>
+            ) : (
+              <div className="w-full flex items-center gap-4 my-6 lg:my-8">
+                <hr className="flex-1 border-gray-200" />
+                <span className="text-xs text-gray-400 uppercase tracking-wider">ឬ</span>
+                <hr className="flex-1 border-gray-200" />
+              </div>
+            )}
 
-            {/* Info Text */}
             <p className="text-sm text-gray-500 text-center leading-relaxed">
-              ចូលគណនីដោយប្រើ Google របស់អ្នក
-              <br />
-              ដើម្បីរក្សាទុកកំណត់ត្រារបស់អ្នកដោយសុវត្ថិភាព
+              {isLocalDev ? (
+                <>Click &quot;Local Development Login&quot; to sign in instantly<br />without Google authentication</>
+              ) : (
+                <>ចូលគណនីដោយប្រើ Google របស់អ្នក<br />ដើម្បីរក្សាទុកកំណត់ត្រារបស់អ្នកដោយសុវត្ថិភាព</>
+              )}
             </p>
           </div>
 
-          {/* Footer Terms */}
           <div className="mt-8 lg:mt-12 text-center max-w-sm">
             <p className="text-xs text-gray-400 leading-relaxed">
               ដោយបន្ត អ្នកទទួលស្គាល់ថាអ្នកយល់និងយល់ព្រម{" "}
@@ -249,7 +262,6 @@ export default async function LoginPage() {
             </p>
           </div>
 
-          {/* Bottom Links */}
           <div className="mt-12 lg:mt-16 flex items-center gap-4 text-gray-500">
             <a href="#" className="flex items-center gap-1.5 hover:text-gray-800 transition-colors">
               <div className="w-4 h-4 bg-gray-300 rounded-[2px] flex items-center justify-center">
