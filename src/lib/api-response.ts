@@ -58,8 +58,8 @@ export function unauthorizedResponse() {
   return errorResponse(ERROR_MESSAGES.UNAUTHORIZED, HTTP_STATUS.UNAUTHORIZED);
 }
 
-export function forbiddenResponse() {
-  return errorResponse(ERROR_MESSAGES.FORBIDDEN, HTTP_STATUS.FORBIDDEN);
+export function forbiddenResponse(message?: string) {
+  return errorResponse(message || ERROR_MESSAGES.FORBIDDEN, HTTP_STATUS.FORBIDDEN);
 }
 
 export function notFoundResponse(resource: string) {

@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useCallback, useMemo, useState, useEffect, memo, lazy, Suspense } from "react";
-import { Menu, MoreHorizontal, Star, ImagePlus, X, Sparkles, Loader2 } from "lucide-react";
+import { Menu, MoreHorizontal, Star, ImagePlus, X, Sparkles, Loader2, History } from "lucide-react";
+import Link from "next/link";
 import { useProject } from "@/hooks/useProject";
 import { LazyEditor } from "./LazyEditor";
 import { CoverSelector } from "./CoverSelector";
@@ -15,20 +16,26 @@ import { Theme as EmojiTheme } from "emoji-picker-react";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import type { Project } from "@/types";
 
-// Lazy load EmojiPicker (~200KB) - only loads when user clicks emoji
 const EmojiPicker = lazy(() => import("emoji-picker-react"));
 
-// Loading placeholder for emoji picker
 const EmojiPickerFallback = () => (
   <div className="w-[350px] h-[400px] bg-white dark:bg-zinc-800 rounded-lg shadow-xl flex items-center justify-center">
     <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
   </div>
 );
 
+interface User {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+}
+
 interface ProjectContentProps {
   projectId: string;
   onToggleSidebar: () => void;
   onShowToast: (message: string) => void;
+  user?: User;
 }
 
 interface HeaderProps {
@@ -43,27 +50,34 @@ const Header = memo(function Header({ project, formattedTime, onToggleSidebar, o
   const { HEADER, TOAST } = UI_TEXT;
 
   return (
-    <header className="h-12 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between px-4 flex-shrink-0 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm sticky top-0 z-10">
-      <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+    <header className="h-12 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between px-3 sm:px-4 flex-shrink-0 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm sticky top-0 z-10">
+      <div className="flex items-center gap-1 sm:gap-2 text-sm text-zinc-500 dark:text-zinc-400 min-w-0 flex-1">
         <button
           onClick={onToggleSidebar}
-          className="md:hidden mr-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 p-1 rounded text-zinc-700 dark:text-zinc-300"
+          className="md:hidden mr-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 p-1 rounded text-zinc-700 dark:text-zinc-300 flex-shrink-0"
         >
           <Menu className="w-5 h-5" />
         </button>
         {project && (
           <>
-            <span className="hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors cursor-pointer">
+            <span className="hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors cursor-pointer hidden sm:inline">
               {HEADER.NOTES}
             </span>
-            <span className="text-zinc-300 dark:text-zinc-700">/</span>
-            <span className="text-zinc-800 dark:text-zinc-200 font-medium truncate max-w-[200px]">
+            <span className="text-zinc-300 dark:text-zinc-700 hidden sm:inline">/</span>
+            <span className="text-zinc-800 dark:text-zinc-200 font-medium truncate max-w-[120px] sm:max-w-[200px]">
               {project.title}
             </span>
           </>
         )}
       </div>
-      <div className="flex items-center gap-1 sm:gap-3">
+      <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
+        <Link
+          href="/changelog"
+          className="p-1.5 text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded transition-colors"
+          title="Changelog"
+        >
+          <History className="w-4 h-4" />
+        </Link>
         {project && (
           <>
             <button
@@ -106,6 +120,7 @@ export function ProjectContent({
   projectId,
   onToggleSidebar,
   onShowToast,
+  user,
 }: ProjectContentProps) {
   const { TOAST } = UI_TEXT;
   const cachedProject = useMemo(() => getCachedProject(projectId), [projectId]);
@@ -140,8 +155,7 @@ export function ProjectContent({
           currentBlock,
           "after"
         );
-      } catch (e) {
-        // If no cursor or error, append to end
+      } catch {
         const blocks = await editor.tryParseMarkdownToBlocks(text);
         const docBlocks = editor.document;
         if (docBlocks.length > 0) {
@@ -152,7 +166,6 @@ export function ProjectContent({
              "after"
            );
         } else {
-           // If document is empty
            editor.replaceBlocks(editor.document, blocks);
         }
       }
@@ -282,8 +295,8 @@ export function ProjectContent({
               <div className="h-12" />
             )}
 
-            <div className="max-w-3xl mx-auto px-6 py-8 md:py-12">
-              <div className="group relative mb-8">
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 md:py-12">
+              <div className="group relative mb-6 sm:mb-8">
                 {!project.cover && (
                   <button
                     onClick={() => setShowCoverSelector(true)}
@@ -294,9 +307,9 @@ export function ProjectContent({
                   </button>
                 )}
                 <div className="relative inline-block">
-                  <div 
+                  <div
                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    className="mb-4 inline-flex items-center justify-center w-16 h-16 text-4xl hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 rounded-lg cursor-pointer transition-all select-none"
+                    className="mb-3 sm:mb-4 inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 text-3xl sm:text-4xl hover:bg-zinc-50 dark:hover:bg-zinc-800 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 rounded-lg cursor-pointer transition-all select-none"
                   >
                     {project.emoji}
                   </div>
@@ -314,7 +327,7 @@ export function ProjectContent({
                 <h1
                   ref={titleRef}
                   key={`title-${project.id}`}
-                  className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 mb-2 outline-none placeholder:text-zinc-300 dark:placeholder:text-zinc-700 border-none bg-transparent w-full"
+                  className="text-2xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 mb-2 outline-none placeholder:text-zinc-300 dark:placeholder:text-zinc-700 border-none bg-transparent w-full"
                   contentEditable
                   suppressContentEditableWarning
                   spellCheck={false}
@@ -362,6 +375,7 @@ export function ProjectContent({
         onClose={() => setShowAI(false)}
         onInsert={handleAIInsert}
         getContext={getContext}
+        user={user}
       />
     </main>
   );

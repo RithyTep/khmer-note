@@ -9,37 +9,25 @@ import {
   saveProject,
   deleteProject as deleteProjectFromDB,
   generateTempId,
-  isTempId,
   getLastProjectId as getLastProjectIdFromDB,
   setLastProjectId as setLastProjectIdToDB,
-  updateProjectTask,
-  addProjectTask,
-  deleteProjectTask,
-  updateProjectKanbanCard,
-  addProjectKanbanCard,
-  deleteProjectKanbanCard,
 } from "@/lib/local-db";
-import { sync, initialSync, startSyncInterval, addSyncListener, needsSync } from "@/lib/sync-service";
+import { syncProjectFields, initialSync, forceSync, addSyncListener } from "@/lib/sync-service";
 import { DEFAULT_VALUES } from "@/lib/constants";
 
 const STATUS_CYCLE: Status[] = ["NOT_STARTED", "IN_PROGRESS", "COMPLETED"];
-
-// ============ Single Project Hook ============
 
 export function useProject(projectId: string | null) {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
-  // Use ref to avoid dependency on project object in callbacks
   const projectRef = useRef<Project | null>(null);
 
-  // Keep ref in sync with state
   useEffect(() => {
     projectRef.current = project;
   }, [project]);
 
-  // Load project from local DB
   const loadProject = useCallback(async () => {
     if (!projectId) {
       setProject(null);
@@ -72,7 +60,6 @@ export function useProject(projectId: string | null) {
     };
   }, [loadProject]);
 
-  // Update project locally - stable callback that doesn't depend on project state
   const updateProject = useCallback(
     async (data: UpdateProjectInput) => {
       const currentProject = projectRef.current;
@@ -96,11 +83,21 @@ export function useProject(projectId: string | null) {
 
       setProject(updated);
       await saveProject(updated);
+      // Only sync changed fields - convert to proper types
+      const syncData: Partial<Project> = {};
+      if (data.title !== undefined) syncData.title = data.title;
+      if (data.description !== undefined) syncData.description = data.description ?? null;
+      if (data.content !== undefined) syncData.content = data.content ?? null;
+      if (data.emoji !== undefined) syncData.emoji = data.emoji;
+      if (data.cover !== undefined) syncData.cover = data.cover;
+      if (data.status !== undefined) syncData.status = data.status;
+      if (data.dueDate !== undefined) syncData.dueDate = data.dueDate ? new Date(data.dueDate) : null;
+      if (data.isFavorite !== undefined) syncData.isFavorite = data.isFavorite;
+      syncProjectFields(projectId, syncData);
     },
-    [projectId] // Only depends on projectId, not the entire project object
+    [projectId]
   );
 
-  // Cycle through statuses - stable callback
   const cycleStatus = useCallback(() => {
     const currentProject = projectRef.current;
     if (!currentProject) return;
@@ -108,8 +105,6 @@ export function useProject(projectId: string | null) {
     const nextStatus = STATUS_CYCLE[(currentIdx + 1) % STATUS_CYCLE.length];
     updateProject({ status: nextStatus });
   }, [updateProject]);
-
-  // ============ Task Operations ============
 
   const addTask = useCallback(
     async (text: string, tag?: string) => {
@@ -139,6 +134,7 @@ export function useProject(projectId: string | null) {
 
       setProject(updatedProject);
       await saveProject(updatedProject);
+      syncProjectFields(projectId, { tasks: updatedProject.tasks });
       return newTask;
     },
     [projectId]
@@ -163,6 +159,7 @@ export function useProject(projectId: string | null) {
 
       setProject(updatedProject);
       await saveProject(updatedProject);
+      syncProjectFields(projectId, { tasks: updatedProject.tasks });
     },
     [projectId]
   );
@@ -180,6 +177,7 @@ export function useProject(projectId: string | null) {
 
       setProject(updatedProject);
       await saveProject(updatedProject);
+      syncProjectFields(projectId, { tasks: updatedProject.tasks });
     },
     [projectId]
   );
@@ -195,8 +193,6 @@ export function useProject(projectId: string | null) {
     },
     [updateTask]
   );
-
-  // ============ Kanban Operations ============
 
   const addKanbanCard = useCallback(
     async (text: string, column: KanbanColumn = "TODO", priority?: Priority) => {
@@ -227,6 +223,7 @@ export function useProject(projectId: string | null) {
 
       setProject(updatedProject);
       await saveProject(updatedProject);
+      syncProjectFields(projectId, { kanbanCards: updatedProject.kanbanCards });
       return newCard;
     },
     [projectId]
@@ -251,6 +248,7 @@ export function useProject(projectId: string | null) {
 
       setProject(updatedProject);
       await saveProject(updatedProject);
+      syncProjectFields(projectId, { kanbanCards: updatedProject.kanbanCards });
     },
     [projectId]
   );
@@ -268,6 +266,7 @@ export function useProject(projectId: string | null) {
 
       setProject(updatedProject);
       await saveProject(updatedProject);
+      syncProjectFields(projectId, { kanbanCards: updatedProject.kanbanCards });
     },
     [projectId]
   );
@@ -286,12 +285,10 @@ export function useProject(projectId: string | null) {
     refetch: loadProject,
     updateProject,
     cycleStatus,
-    // Task operations
     addTask,
     updateTask,
     deleteTask,
     toggleTask,
-    // Kanban operations
     addKanbanCard,
     updateKanbanCard,
     deleteKanbanCard,
@@ -299,15 +296,12 @@ export function useProject(projectId: string | null) {
   };
 }
 
-// ============ Projects List Hook ============
-
 export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState<string>("idle");
   const initializedRef = useRef(false);
 
-  // Load projects from local DB
   const loadProjects = useCallback(async () => {
     try {
       const localProjects = await getAllProjects();
@@ -319,7 +313,6 @@ export function useProjects() {
     }
   }, []);
 
-  // Initialize: load from local DB, then sync if needed
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
@@ -328,38 +321,22 @@ export function useProjects() {
       // First, load from local DB (instant)
       await loadProjects();
 
-      // Then check if we need to sync with server
-      const shouldSync = await needsSync();
-      if (shouldSync) {
-        const hasLocalData = (await getAllProjects()).length > 0;
-        if (hasLocalData) {
-          // We have local data, do a background sync
-          sync();
-        } else {
-          // No local data, do initial sync
-          await initialSync();
-          await loadProjects();
-        }
+      // Then fetch latest from server and merge
+      const serverProjects = await initialSync();
+      if (serverProjects.length > 0) {
+        setProjects(serverProjects);
       }
-
-      // Start sync interval
-      startSyncInterval();
     };
 
     init();
 
-    // Listen for sync status changes
     const unsubscribe = addSyncListener((status) => {
       setSyncStatus(status);
-      if (status === "success") {
-        loadProjects();
-      }
     });
 
     return () => unsubscribe();
   }, [loadProjects]);
 
-  // Create project locally
   const createProject = useCallback(
     async (title: string, userId: string, content?: Record<string, unknown>[]) => {
       const newProject: Project = {
@@ -384,25 +361,21 @@ export function useProjects() {
       // Update state immediately
       setProjects((prev) => [newProject, ...prev]);
 
-      // Save to local DB
+      // Save to local DB and sync (full project for new)
       await saveProject(newProject);
       await setLastProjectIdToDB(newProject.id);
+      syncProjectFields(newProject.id, newProject);
 
       return newProject;
     },
     []
   );
 
-  // Delete project locally
   const deleteProjectLocal = useCallback(async (projectId: string) => {
-    // Update state immediately
     setProjects((prev) => prev.filter((p) => p.id !== projectId));
-
-    // Delete from local DB
     await deleteProjectFromDB(projectId);
   }, []);
 
-  // Duplicate project
   const duplicateProject = useCallback(
     async (projectId: string, userId: string) => {
       const original = await getProject(projectId);
@@ -420,13 +393,13 @@ export function useProjects() {
 
       setProjects((prev) => [duplicated, ...prev]);
       await saveProject(duplicated);
+      syncProjectFields(duplicated.id, duplicated);
 
       return duplicated;
     },
     []
   );
 
-  // Toggle favorite
   const toggleFavorite = useCallback(async (projectId: string) => {
     const project = projects.find(p => p.id === projectId);
     if (!project) return;
@@ -438,11 +411,11 @@ export function useProjects() {
     );
 
     await saveProject(updated);
+    syncProjectFields(projectId, { isFavorite: updated.isFavorite });
   }, [projects]);
 
-  // Manual sync
-  const forceSync = useCallback(async () => {
-    await sync(true);
+  const triggerForceSync = useCallback(async () => {
+    await forceSync();
     await loadProjects();
   }, [loadProjects]);
 
@@ -455,11 +428,9 @@ export function useProjects() {
     deleteProject: deleteProjectLocal,
     duplicateProject,
     toggleFavorite,
-    forceSync,
+    forceSync: triggerForceSync,
   };
 }
-
-// ============ Last Project ID ============
 
 export async function getLastProjectId(): Promise<string | null> {
   return getLastProjectIdFromDB();

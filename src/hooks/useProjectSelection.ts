@@ -46,7 +46,6 @@ export function useProjectSelection({ projects, onRefetch, initialProjectId }: U
 
     const init = async () => {
       const urlId = initialProjectId ?? getProjectIdFromPath();
-      // Try both cache and IndexedDB for last project ID
       const cacheLastId = getLastProjectIdFromCache();
       const dbLastId = await getLastProjectIdFromDB();
       const lastId = cacheLastId ?? dbLastId;
@@ -105,7 +104,6 @@ export function useProjectSelection({ projects, onRefetch, initialProjectId }: U
 
   const handleDelete = useCallback(
     async (projectId: string) => {
-      // Delete from local IndexedDB
       await deleteProjectFromDB(projectId);
 
       if (selectedId === projectId) {
@@ -122,7 +120,6 @@ export function useProjectSelection({ projects, onRefetch, initialProjectId }: U
         }
       }
 
-      // Refresh the projects list
       onRefetch();
     },
     [projects, selectedId, onRefetch]
@@ -135,11 +132,9 @@ export function useProjectSelection({ projects, onRefetch, initialProjectId }: U
 
       const newValue = !project.isFavorite;
 
-      // Update in local IndexedDB
       const updated = { ...project, isFavorite: newValue, updatedAt: new Date() };
       await saveProject(updated);
 
-      // Refresh the projects list
       onRefetch();
 
       return newValue;

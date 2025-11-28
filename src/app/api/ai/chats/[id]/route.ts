@@ -54,7 +54,6 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Verify ownership
     const chat = await prisma.aiChat.findUnique({
       where: {
         id,

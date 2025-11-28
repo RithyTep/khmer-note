@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAMID.com.camnova.app",
+        "paths": ["/api/auth/*", "/login", "/"]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["TEAMID.com.camnova.app"]
+  }
+}

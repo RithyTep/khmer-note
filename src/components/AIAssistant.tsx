@@ -17,6 +17,7 @@ import {
   Loader2,
   ArrowRight,
 } from "lucide-react";
+import Image from "next/image";
 import { UI_TEXT, API_HEADERS } from "@/lib/constants";
 
 // Lazy load markdown renderer (~100KB) - only loads when there are messages
@@ -78,14 +79,13 @@ function MarkdownRenderer({ content }: { content: string }) {
 
 // AI Avatar Component
 const AIAvatar = memo(function AIAvatar({ size = "md" }: { size?: "sm" | "md" }) {
-  const sizeClasses = size === "sm" ? "w-5 h-5" : "w-10 h-10";
-  const iconSize = size === "sm" ? 20 : 24;
+  const sizeClasses = size === "sm" ? "w-5 h-5" : "w-7 h-7";
+  const iconSize = size === "sm" ? 14 : 16;
 
   return (
-    <div className={`relative ${sizeClasses} flex-shrink-0 group`}>
-      <div className="absolute inset-0 bg-amber-100 dark:bg-amber-900/30 rounded-xl rotate-3 group-hover:rotate-6 transition-transform duration-300" />
-      <div className="absolute inset-0 bg-gradient-to-br from-amber-50 to-white dark:from-amber-900/20 dark:to-zinc-800 rounded-xl border border-amber-200/60 dark:border-amber-700/40 shadow-sm flex items-center justify-center z-10">
-        <Bot size={iconSize} className="text-amber-600 dark:text-amber-500 avatar-pulse" strokeWidth={1.5} />
+    <div className={`relative ${sizeClasses} flex-shrink-0`}>
+      <div className="absolute inset-0 bg-gradient-to-br from-amber-100 to-amber-50 dark:from-amber-900/30 dark:to-amber-800/20 rounded-lg border border-amber-200/60 dark:border-amber-700/40 shadow-sm flex items-center justify-center">
+        <Bot size={iconSize} className="text-amber-600 dark:text-amber-500" strokeWidth={1.5} />
       </div>
     </div>
   );
@@ -106,22 +106,30 @@ const SuggestionCard = memo(function SuggestionCard({
   return (
     <button
       onClick={onClick}
-      className="p-3 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 hover:bg-amber-50/30 dark:hover:bg-amber-900/10 hover:border-amber-100 dark:hover:border-amber-800/50 transition-colors duration-200 text-left"
+      className="p-2 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 hover:bg-amber-50/30 dark:hover:bg-amber-900/10 hover:border-amber-100 dark:hover:border-amber-800/50 transition-colors duration-200 text-left"
     >
-      <div className="flex items-center gap-2 mb-1">
-        <Icon className="w-4 h-4 text-amber-600 dark:text-amber-500" />
-        <span className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">{label}</span>
+      <div className="flex items-center gap-1.5 mb-0.5">
+        <Icon className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500" />
+        <span className="font-medium text-zinc-900 dark:text-zinc-100 text-xs">{label}</span>
       </div>
-      <p className="text-xs text-zinc-500 dark:text-zinc-400">{description}</p>
+      <p className="text-[10px] text-zinc-500 dark:text-zinc-400 line-clamp-1">{description}</p>
     </button>
   );
 });
+
+interface User {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+}
 
 interface AIAssistantProps {
   isOpen: boolean;
   onClose: () => void;
   onInsert?: (text: string) => void;
   getContext?: () => Promise<string>;
+  user?: User;
 }
 
 export const AIAssistant = memo(function AIAssistant({
@@ -129,6 +137,7 @@ export const AIAssistant = memo(function AIAssistant({
   onClose,
   onInsert,
   getContext,
+  user,
 }: AIAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -315,7 +324,7 @@ export const AIAssistant = memo(function AIAssistant({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl h-[85vh] max-h-[700px] bg-white dark:bg-zinc-900 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.3)] border border-zinc-200/80 dark:border-zinc-700/80 flex flex-col overflow-hidden z-50 animate-fade-in-up">
+    <div className="fixed bottom-10 right-3 w-[calc(100vw-24px)] max-w-[320px] sm:bottom-6 sm:right-6 sm:w-[380px] sm:max-w-[380px] md:w-[420px] md:max-w-[420px] h-[50vh] max-h-[400px] sm:h-[70vh] sm:max-h-[550px] bg-white dark:bg-zinc-900 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.3)] border border-zinc-200/80 dark:border-zinc-700/80 flex flex-col overflow-hidden z-50 animate-fade-in-up">
 
       {/* Decorative Top Pattern */}
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-600 via-amber-400 to-amber-600 opacity-80" />
@@ -365,7 +374,7 @@ export const AIAssistant = memo(function AIAssistant({
       </header>
 
       {/* Chat History Area */}
-      <main className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-8">
+      <main className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
         {showHistory ? (
           // History Panel
           <div className="space-y-2">
@@ -415,24 +424,20 @@ export const AIAssistant = memo(function AIAssistant({
           </div>
         ) : messages.length === 0 ? (
           // Welcome Screen
-          <div className="flex items-start gap-5 w-full">
+          <div className="flex items-start gap-3 w-full">
             <AIAvatar />
-            <div className="flex flex-col w-full pt-1">
-              <span className="text-xs font-semibold text-amber-600/80 dark:text-amber-500/80 mb-2 tracking-wide uppercase">
-                {AI_ASSISTANT.TITLE}
-              </span>
-
-              <div className="space-y-6 text-base text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight flex items-center gap-2">
+            <div className="flex flex-col w-full">
+              <div className="space-y-4 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight flex items-center gap-2">
                   {AI_ASSISTANT.GREETING}
-                  <span className="inline-block animate-bounce text-amber-500">👋</span>
+                  <span className="inline-block text-amber-500">👋</span>
                 </h2>
 
-                <p className="text-zinc-700 dark:text-zinc-300">
+                <p className="text-zinc-600 dark:text-zinc-400 text-sm">
                   {AI_ASSISTANT.GREETING_MESSAGE}
                 </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                <div className="grid grid-cols-2 gap-2">
                   <SuggestionCard
                     icon={PenTool}
                     label={AI_ASSISTANT.SUGGESTIONS.WRITE.label}
@@ -458,39 +463,40 @@ export const AIAssistant = memo(function AIAssistant({
                     onClick={() => handleSubmit(undefined, "Brainstorm ideas for me")}
                   />
                 </div>
-
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 italic">
-                  {AI_ASSISTANT.TRY_ASKING}
-                </p>
               </div>
             </div>
           </div>
         ) : (
           // Messages
-          <div className="space-y-8">
+          <div className="space-y-4">
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex ${message.role === "user" ? "flex-row-reverse" : "flex-row"} items-start gap-4`}
+                className={`flex ${message.role === "user" ? "flex-row-reverse" : "flex-row"} items-start gap-2.5`}
               >
                 {message.role === "user" ? (
-                  <div className="w-8 h-8 rounded-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 flex items-center justify-center border border-zinc-900 dark:border-zinc-100 flex-shrink-0 shadow-sm">
-                    <span className="text-xs font-medium">U</span>
-                  </div>
+                  user?.image ? (
+                    <Image
+                      src={user.image}
+                      alt={user.name || "User"}
+                      width={24}
+                      height={24}
+                      className="rounded-full flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 flex items-center justify-center flex-shrink-0">
+                      <span className="text-[10px] font-medium">{user?.name?.charAt(0) || "U"}</span>
+                    </div>
+                  )
                 ) : (
                   <AIAvatar />
                 )}
 
-                <div className={`flex flex-col ${message.role === "user" ? "items-end" : "items-start"} max-w-[80%]`}>
-                  {message.role === "assistant" && (
-                    <span className="text-xs font-semibold text-amber-600/80 dark:text-amber-500/80 mb-2 tracking-wide uppercase">
-                      {AI_ASSISTANT.TITLE}
-                    </span>
-                  )}
+                <div className={`flex flex-col ${message.role === "user" ? "items-end" : "items-start"} max-w-[85%]`}>
                   <div
-                    className={`text-base leading-relaxed ${
+                    className={`text-sm leading-relaxed ${
                       message.role === "user"
-                        ? "bg-zinc-100/80 dark:bg-zinc-800 border border-transparent text-zinc-800 dark:text-zinc-200 px-5 py-2.5 rounded-2xl rounded-tr-sm"
+                        ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 px-3 py-2 rounded-2xl rounded-tr-sm"
                         : "text-zinc-600 dark:text-zinc-300 prose prose-zinc dark:prose-invert prose-sm max-w-none"
                     }`}
                   >
@@ -499,9 +505,9 @@ export const AIAssistant = memo(function AIAssistant({
                   {message.role === "assistant" && onInsert && (
                     <button
                       onClick={() => onInsert(message.content)}
-                      className="mt-3 flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 px-3 py-1.5 rounded-full transition-colors border border-amber-200 dark:border-amber-800/50"
+                      className="mt-2 flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 px-2.5 py-1 rounded-full transition-colors border border-amber-200 dark:border-amber-800/50"
                     >
-                      <ArrowRight size={12} />
+                      <ArrowRight size={10} />
                       {AI_ASSISTANT.INSERT}
                     </button>
                   )}
@@ -510,17 +516,12 @@ export const AIAssistant = memo(function AIAssistant({
             ))}
 
             {isLoading && (
-              <div className="flex gap-4 items-start">
+              <div className="flex gap-2.5 items-start">
                 <AIAvatar />
-                <div className="flex flex-col pt-1">
-                  <span className="text-xs font-semibold text-amber-600/80 dark:text-amber-500/80 mb-2 tracking-wide uppercase">
-                    {AI_ASSISTANT.TITLE}
-                  </span>
-                  <div className="flex items-center gap-1.5 h-6">
-                    <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                    <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                    <div className="w-2 h-2 bg-amber-500 rounded-full animate-bounce" />
-                  </div>
+                <div className="flex items-center gap-1 h-7 pt-1">
+                  <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                  <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                  <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-bounce" />
                 </div>
               </div>
             )}
@@ -530,15 +531,15 @@ export const AIAssistant = memo(function AIAssistant({
       </main>
 
       {/* Input Area */}
-      <footer className="p-4 sm:p-6 pt-2 bg-white dark:bg-zinc-900 z-20">
-        <div className="relative group shadow-sm rounded-xl focus-gradient-border">
+      <footer className="p-3 sm:p-4 pt-2 bg-white dark:bg-zinc-900 z-20">
+        <div className="relative group shadow-sm rounded-lg">
           <textarea
             ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={AI_ASSISTANT.PLACEHOLDER}
-            className="ai-textarea w-full pl-4 pr-12 py-3.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-base text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-amber-400 dark:focus:border-amber-600 transition-all duration-200 resize-none z-10"
+            className="ai-textarea w-full pl-3 pr-10 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-amber-400 dark:focus:border-amber-600 transition-all duration-200 resize-none"
             rows={1}
           />
 

@@ -21,6 +21,7 @@ import {
   Moon,
 } from "lucide-react";
 import { useState, useRef, useCallback, memo, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { useTheme } from "next-themes";
 import { useClickOutside, useEscapeKey } from "@/hooks/useClickOutside";
@@ -110,6 +111,7 @@ function ProjectItemMenu({
   onDelete,
 }: ProjectItemMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -133,51 +135,63 @@ function ProjectItemMenu({
     closeMenu();
   };
 
+  const handleToggleMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom + 4,
+        left: Math.min(rect.left, window.innerWidth - 220),
+      });
+    }
+    setIsOpen(!isOpen);
+  };
+
   const { PROJECT_MENU } = UI_TEXT;
+
+  const menuContent = isOpen && typeof document !== "undefined" ? createPortal(
+    <div
+      ref={menuRef}
+      className="fixed w-52 bg-white dark:bg-zinc-900 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-800 py-1 z-[100]"
+      style={{ top: menuPosition.top, left: menuPosition.left }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <MenuItem
+        icon={Star}
+        label={project.isFavorite ? PROJECT_MENU.REMOVE_FAVORITE : PROJECT_MENU.ADD_FAVORITE}
+        onClick={() => handleAction(onToggleFavorite)}
+        iconClassName={project.isFavorite ? "fill-yellow-400 text-yellow-400" : ""}
+      />
+
+      <MenuDivider />
+
+      <MenuItem icon={Link} label={PROJECT_MENU.COPY_LINK} onClick={handleCopyLink} />
+      <MenuItem icon={Copy} label={PROJECT_MENU.DUPLICATE} onClick={() => handleAction(onDuplicate)} />
+      <MenuItem icon={Pencil} label={PROJECT_MENU.RENAME} onClick={() => handleAction(onRename)} />
+
+      <MenuDivider />
+
+      <MenuItem icon={FolderInput} label={PROJECT_MENU.MOVE_TO} onClick={() => {}} disabled shortcut="→" />
+      <MenuItem icon={Trash2} label={PROJECT_MENU.TRASH} onClick={() => handleAction(onDelete)} variant="danger" />
+
+      <MenuDivider />
+
+      <MenuItem icon={ExternalLink} label={PROJECT_MENU.OPEN_NEW_TAB} onClick={handleOpenNewTab} shortcut="⌃" />
+      <MenuItem icon={PanelRight} label={PROJECT_MENU.OPEN_SIDE_PEEK} onClick={() => {}} disabled />
+    </div>,
+    document.body
+  ) : null;
 
   return (
     <div className="relative">
       <button
         ref={buttonRef}
-        onClick={(e) => {
-          e.stopPropagation();
-          setIsOpen(!isOpen);
-        }}
+        onClick={handleToggleMenu}
         className="p-1 rounded hover:bg-zinc-300/50 dark:hover:bg-zinc-700 text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 opacity-0 group-hover:opacity-100 transition-all"
       >
         <MoreHorizontal className="w-3.5 h-3.5" />
       </button>
-
-      {isOpen && (
-        <div
-          ref={menuRef}
-          className="absolute left-0 top-full mt-1 w-52 bg-white dark:bg-zinc-900 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-800 py-1 z-50"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <MenuItem
-            icon={Star}
-            label={project.isFavorite ? PROJECT_MENU.REMOVE_FAVORITE : PROJECT_MENU.ADD_FAVORITE}
-            onClick={() => handleAction(onToggleFavorite)}
-            iconClassName={project.isFavorite ? "fill-yellow-400 text-yellow-400" : ""}
-          />
-
-          <MenuDivider />
-
-          <MenuItem icon={Link} label={PROJECT_MENU.COPY_LINK} onClick={handleCopyLink} />
-          <MenuItem icon={Copy} label={PROJECT_MENU.DUPLICATE} onClick={() => handleAction(onDuplicate)} />
-          <MenuItem icon={Pencil} label={PROJECT_MENU.RENAME} onClick={() => handleAction(onRename)} />
-
-          <MenuDivider />
-
-          <MenuItem icon={FolderInput} label={PROJECT_MENU.MOVE_TO} onClick={() => {}} disabled shortcut="→" />
-          <MenuItem icon={Trash2} label={PROJECT_MENU.TRASH} onClick={() => handleAction(onDelete)} variant="danger" />
-
-          <MenuDivider />
-
-          <MenuItem icon={ExternalLink} label={PROJECT_MENU.OPEN_NEW_TAB} onClick={handleOpenNewTab} shortcut="⌃" />
-          <MenuItem icon={PanelRight} label={PROJECT_MENU.OPEN_SIDE_PEEK} onClick={() => {}} disabled />
-        </div>
-      )}
+      {menuContent}
     </div>
   );
 }
@@ -207,7 +221,7 @@ const ProjectItem = memo(function ProjectItem({
   return (
     <div
       onClick={onSelect}
-      className={`group w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer ${
+      className={`group w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer [touch-action:manipulation] ${
         isSelected ? selectedStyles : defaultStyles
       }`}
     >
@@ -335,6 +349,15 @@ export const Sidebar = memo(function Sidebar({
     setMounted(true);
   }, []);
 
+  // Wrap onSelectProject to close sidebar on mobile
+  const handleSelectProject = useCallback((projectId: string) => {
+    onSelectProject(projectId);
+    // Close sidebar on mobile (check if window width is less than md breakpoint)
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      onClose();
+    }
+  }, [onSelectProject, onClose]);
+
   return (
     <>
       <div
@@ -345,7 +368,7 @@ export const Sidebar = memo(function Sidebar({
       />
 
       <aside
-        className={`w-64 bg-zinc-50 dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 flex flex-col flex-shrink-0 transition-transform duration-300 fixed md:relative z-30 h-full select-none ${
+        className={`w-64 bg-zinc-50 dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 flex flex-col flex-shrink-0 transition-transform duration-300 fixed md:static z-30 h-full select-none ${
           isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
@@ -354,7 +377,7 @@ export const Sidebar = memo(function Sidebar({
             <UserAvatar user={user} />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate text-zinc-700 dark:text-zinc-200">
-                {user?.name || "Khmer Note"}
+                {user?.name || "Camnova"}
               </p>
               <p className="text-[10px] text-zinc-400 truncate">
                 {user?.email || ""}
@@ -395,7 +418,7 @@ export const Sidebar = memo(function Sidebar({
               <ProjectList
                 projects={favoriteProjects}
                 selectedProjectId={selectedProjectId}
-                onSelectProject={onSelectProject}
+                onSelectProject={handleSelectProject}
                 onToggleFavorite={onToggleFavorite}
                 onDuplicateProject={onDuplicateProject}
                 onRenameProject={onRenameProject}
@@ -421,7 +444,7 @@ export const Sidebar = memo(function Sidebar({
               <ProjectList
                 projects={otherProjects}
                 selectedProjectId={selectedProjectId}
-                onSelectProject={onSelectProject}
+                onSelectProject={handleSelectProject}
                 onToggleFavorite={onToggleFavorite}
                 onDuplicateProject={onDuplicateProject}
                 onRenameProject={onRenameProject}

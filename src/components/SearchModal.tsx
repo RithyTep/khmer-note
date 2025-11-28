@@ -99,7 +99,7 @@ export function SearchModal({
         </div>
         <div className="bg-zinc-50 dark:bg-zinc-900/50 px-4 py-2 border-t border-zinc-100 dark:border-zinc-800 text-xs text-zinc-400 dark:text-zinc-500 flex justify-between">
           <span>ស្វែងរកកម្រិតខ្ពស់</span>
-          <span>Khmer Note</span>
+          <span>Camnova</span>
         </div>
       </div>
     </div>

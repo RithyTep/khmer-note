@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, memo, lazy, Suspense, useEffect } from "react";
+import { useState, useCallback, memo, lazy, Suspense, useEffect } from "react";
 import { signOut } from "next-auth/react";
 import { Sidebar } from "@/components/Sidebar";
 import { Toast } from "@/components/Toast";
@@ -72,7 +72,7 @@ export function HomeClient({ user, initialProjectId }: HomeClientProps) {
 
   useEffect(() => {
     if (!selectedId) {
-      document.title = "Khmer Note";
+      document.title = "Camnova";
     }
   }, [selectedId]);
 
@@ -151,6 +151,7 @@ export function HomeClient({ user, initialProjectId }: HomeClientProps) {
             projectId={selectedId}
             onToggleSidebar={toggleSidebar}
             onShowToast={showToast}
+            user={user}
           />
         </Suspense>
       );
@@ -168,7 +169,7 @@ export function HomeClient({ user, initialProjectId }: HomeClientProps) {
   };
 
   return (
-    <>
+    <div className="flex w-full h-full overflow-hidden">
       {searchOpen && (
         <Suspense fallback={<SearchModalFallback />}>
           <SearchModal
@@ -199,6 +200,6 @@ export function HomeClient({ user, initialProjectId }: HomeClientProps) {
       {renderMainContent()}
 
       <Toast message={toast} onClose={closeToast} />
-    </>
+    </div>
   );
 }

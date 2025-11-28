@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { rateLimit, getClientId, rateLimitResponse } from "@/lib/rate-limit";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
-// Validation constants
 const MAX_PROMPT_LENGTH = 5000;
 const MAX_CONTEXT_LENGTH = 10000;
 const VALID_ACTIONS = [
@@ -12,7 +11,6 @@ const VALID_ACTIONS = [
   "improve", "explain", "brainstorm", "outline", "chat"
 ] as const;
 
-// Rate limit for AI requests: 20 requests per minute per user
 const AI_RATE_LIMIT = { limit: 20, window: 60 };
 
 function getGroqClient() {
@@ -68,7 +66,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Rate limiting based on user ID
     const rateLimitKey = `ai:${session.user.id}`;
     const rateLimitResult = rateLimit(rateLimitKey, AI_RATE_LIMIT);
     if (!rateLimitResult.success) {
@@ -85,7 +82,6 @@ export async function POST(request: NextRequest) {
 
     const { prompt, action, context, chatId } = await request.json();
 
-    // Validate required fields
     if (!prompt || !action) {
       return NextResponse.json(
         { error: "Missing prompt or action" },
@@ -93,7 +89,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate action is allowed
     if (!VALID_ACTIONS.includes(action)) {
       return NextResponse.json(
         { error: `Invalid action. Must be one of: ${VALID_ACTIONS.join(", ")}` },
@@ -101,7 +96,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate prompt length
     if (typeof prompt !== "string" || prompt.length > MAX_PROMPT_LENGTH) {
       return NextResponse.json(
         { error: `Prompt must be a string with max ${MAX_PROMPT_LENGTH} characters` },
@@ -109,7 +103,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate context length if provided
     if (context && (typeof context !== "string" || context.length > MAX_CONTEXT_LENGTH)) {
       return NextResponse.json(
         { error: `Context must be a string with max ${MAX_CONTEXT_LENGTH} characters` },

@@ -28,7 +28,7 @@ export default async function LoginPage() {
             <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center shadow-2xl">
               <span className="font-serif font-bold text-3xl text-gray-900">K</span>
             </div>
-            <span className="text-white text-2xl font-semibold tracking-tight">Khmer Note</span>
+            <span className="text-white text-2xl font-semibold tracking-tight">Camnova</span>
           </div>
 
           <h1 className="text-4xl xl:text-5xl font-bold text-white leading-tight mb-6">
@@ -73,7 +73,7 @@ export default async function LoginPage() {
         </div>
 
         <div className="absolute bottom-8 left-0 right-0 text-center text-gray-600 text-sm">
-          © 2024 Khmer Note. All rights reserved.
+          © 2024 Camnova. All rights reserved.
         </div>
       </div>
 
@@ -166,7 +166,7 @@ export default async function LoginPage() {
               ចូលគណនីដើម្បីប្រើប្រាស់
             </h1>
             <p className="text-gray-500 text-center mb-8 lg:mb-10">
-              <span className="font-bold text-gray-900">Khmer Note</span>
+              <span className="font-bold text-gray-900">Camnova</span>
             </p>
 
             {isLocalDev && (
@@ -267,7 +267,7 @@ export default async function LoginPage() {
               <div className="w-4 h-4 bg-gray-300 rounded-[2px] flex items-center justify-center">
                 <span className="text-[8px] font-bold text-white">K</span>
               </div>
-              <span className="text-xs font-normal">តើ Khmer Note ជាអ្វី?</span>
+              <span className="text-xs font-normal">តើ Camnova ជាអ្វី?</span>
             </a>
             <span className="text-gray-300 text-xs">·</span>
             <a href="#" className="text-xs font-normal hover:text-gray-800 transition-colors">

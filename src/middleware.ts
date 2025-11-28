@@ -327,11 +327,11 @@ export function middleware(request: NextRequest) {
       // Allow 10 seconds drift/delay
       if (isNaN(timestamp) || now - timestamp > 10000 || now - timestamp < -5000) {
         markSuspicious(ip);
-        return createBlockedResponse("Enable JavaScript to continue (Token Expired)");
+        return createBlockedResponse("Enable JavaScript to continue");
       }
     } catch {
       markSuspicious(ip);
-      return createBlockedResponse("Enable JavaScript to continue (Invalid Token)");
+      return createBlockedResponse("Enable JavaScript to continue");
     }
   }
 
