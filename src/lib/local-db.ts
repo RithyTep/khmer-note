@@ -2,7 +2,7 @@
 
 import type { Project, Task, KanbanCard } from "@/types";
 
-const DB_NAME = "khmer-note-db";
+const DB_NAME = "camnova-db";
 const DB_VERSION = 1;
 const STORES = {
   projects: "projects",

@@ -4,8 +4,8 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Khmer Note",
-  description: "កម្មវិធីចំណាំជាភាសាខ្មែរ - Khmer Note Taking Application",
+  title: "Camnova",
+  description: "កម្មវិធីចំណាំជាភាសាខ្មែរ - Camnova Note Taking Application",
 };
 
 export default function RootLayout({

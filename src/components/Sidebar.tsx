@@ -354,7 +354,7 @@ export const Sidebar = memo(function Sidebar({
             <UserAvatar user={user} />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate text-zinc-700 dark:text-zinc-200">
-                {user?.name || "Khmer Note"}
+                {user?.name || "Camnova"}
               </p>
               <p className="text-[10px] text-zinc-400 truncate">
                 {user?.email || ""}

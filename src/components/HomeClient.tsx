@@ -72,7 +72,7 @@ export function HomeClient({ user, initialProjectId }: HomeClientProps) {
 
   useEffect(() => {
     if (!selectedId) {
-      document.title = "Khmer Note";
+      document.title = "Camnova";
     }
   }, [selectedId]);
 

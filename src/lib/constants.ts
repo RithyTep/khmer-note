@@ -48,7 +48,7 @@ export const UI_TEXT = {
     REMOVED_FROM_FAVORITES: "បានដកចេញពីចំណូលចិត្ត",
   },
   HOME: {
-    WELCOME: "សូមស្វាគមន៍មកកាន់ Khmer Note",
+    WELCOME: "សូមស្វាគមន៍មកកាន់ Camnova",
     CREATE_FIRST_NOTE: "បង្កើតកំណត់ត្រាដំបូងរបស់អ្នក",
     CREATE_NEW_NOTE: "បង្កើតកំណត់ត្រាថ្មី",
     SELECT_NOTE: "សូមជ្រើសរើសកំណត់ត្រា",
@@ -81,15 +81,15 @@ export const TIMING = {
 };
 
 export const STORAGE_KEYS = {
-  PREFIX: "khmer-note-",
-  SESSION_SYNCED: "khmer-note-session-synced",
-  LAST_SYNC: "khmer-note-last-sync",
-  PROJECTS: "khmer-note-projects-cache",
-  LAST_PROJECT: "khmer-note-last-project",
-  project: (id: string) => `khmer-note-project-${id}`,
+  PREFIX: "camnova-",
+  SESSION_SYNCED: "camnova-session-synced",
+  LAST_SYNC: "camnova-last-sync",
+  PROJECTS: "camnova-projects-cache",
+  LAST_PROJECT: "camnova-last-project",
+  project: (id: string) => `camnova-project-${id}`,
 };
 
 export const API_HEADERS = {
-  CLIENT_KEY: "x-khmer-note-client",
-  CLIENT_VALUE: "khmer-note-web",
+  CLIENT_KEY: "x-camnova-client",
+  CLIENT_VALUE: "camnova-web",
 };

@@ -42,7 +42,7 @@ const RELEASES: VersionRelease[] = [
     version: "1.0.0",
     date: "2024-11-28",
     title: "Initial Stable Release",
-    description: "The first stable release of Khmer Note with full-featured note-taking, AI assistant, and offline support.",
+    description: "The first stable release of Camnova with full-featured note-taking, AI assistant, and offline support.",
     isLatest: true,
     features: [
       {
@@ -185,7 +185,7 @@ export default function ChangelogPage() {
             Changelog
           </h1>
           <p className="text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto">
-            ប្រវត្តិកំណែនិងការផ្លាស់ប្តូរទាំងអស់របស់ Khmer Note
+            ប្រវត្តិកំណែនិងការផ្លាស់ប្តូរទាំងអស់របស់ Camnova
           </p>
         </div>
       </div>
@@ -335,7 +335,7 @@ export default function ChangelogPage() {
       {/* Footer */}
       <footer className="border-t border-zinc-200 dark:border-zinc-800 py-8">
         <div className="w-full px-4 sm:px-8 lg:px-12 text-center text-sm text-zinc-500 dark:text-zinc-400">
-          <p>© 2024 Khmer Note. Built with ❤️ in Cambodia.</p>
+          <p>© 2024 Camnova. Built with ❤️ in Cambodia.</p>
         </div>
       </footer>
     </div>

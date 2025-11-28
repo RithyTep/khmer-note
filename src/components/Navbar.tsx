@@ -54,7 +54,7 @@ export const Navbar = memo(function Navbar({ user, showBackToNotes = false }: Na
               </div>
             </div>
             <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-              Khmer Note
+              Camnova
             </span>
           </Link>
 
