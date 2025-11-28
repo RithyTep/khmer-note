@@ -21,6 +21,7 @@ export const UI_TEXT = {
   SIDEBAR: {
     SEARCH: "ស្វែងរក",
     INBOX: "ប្រអប់សារ",
+    CHANGELOG: "Changelog",
     SETTINGS: "ការកំណត់",
     FAVORITES: "ចំណូលចិត្ត",
     ALL_NOTES: "កំណត់ត្រាទាំងអស់",
