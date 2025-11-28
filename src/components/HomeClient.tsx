@@ -151,6 +151,7 @@ export function HomeClient({ user, initialProjectId }: HomeClientProps) {
             projectId={selectedId}
             onToggleSidebar={toggleSidebar}
             onShowToast={showToast}
+            user={user}
           />
         </Suspense>
       );

@@ -17,6 +17,7 @@ import {
   Loader2,
   ArrowRight,
 } from "lucide-react";
+import Image from "next/image";
 import { UI_TEXT, API_HEADERS } from "@/lib/constants";
 
 // Lazy load markdown renderer (~100KB) - only loads when there are messages
@@ -116,11 +117,19 @@ const SuggestionCard = memo(function SuggestionCard({
   );
 });
 
+interface User {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+}
+
 interface AIAssistantProps {
   isOpen: boolean;
   onClose: () => void;
   onInsert?: (text: string) => void;
   getContext?: () => Promise<string>;
+  user?: User;
 }
 
 export const AIAssistant = memo(function AIAssistant({
@@ -128,6 +137,7 @@ export const AIAssistant = memo(function AIAssistant({
   onClose,
   onInsert,
   getContext,
+  user,
 }: AIAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -314,7 +324,7 @@ export const AIAssistant = memo(function AIAssistant({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-3 sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[380px] md:w-[420px] sm:h-[70vh] sm:max-h-[550px] bg-white dark:bg-zinc-900 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.3)] border border-zinc-200/80 dark:border-zinc-700/80 flex flex-col overflow-hidden z-50 animate-fade-in-up">
+    <div className="fixed inset-4 sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[380px] md:w-[420px] sm:h-[70vh] sm:max-h-[550px] max-h-[75vh] bg-white dark:bg-zinc-900 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.3)] border border-zinc-200/80 dark:border-zinc-700/80 flex flex-col overflow-hidden z-50 animate-fade-in-up">
 
       {/* Decorative Top Pattern */}
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-600 via-amber-400 to-amber-600 opacity-80" />
@@ -465,9 +475,19 @@ export const AIAssistant = memo(function AIAssistant({
                 className={`flex ${message.role === "user" ? "flex-row-reverse" : "flex-row"} items-start gap-2.5`}
               >
                 {message.role === "user" ? (
-                  <div className="w-6 h-6 rounded-full bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 flex items-center justify-center flex-shrink-0">
-                    <span className="text-[10px] font-medium">U</span>
-                  </div>
+                  user?.image ? (
+                    <Image
+                      src={user.image}
+                      alt={user.name || "User"}
+                      width={24}
+                      height={24}
+                      className="rounded-full flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 flex items-center justify-center flex-shrink-0">
+                      <span className="text-[10px] font-medium">{user?.name?.charAt(0) || "U"}</span>
+                    </div>
+                  )
                 ) : (
                   <AIAvatar />
                 )}

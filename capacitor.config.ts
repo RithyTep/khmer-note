@@ -4,11 +4,6 @@ const config: CapacitorConfig = {
   appId: "com.camnova.app",
   appName: "Camnova",
   webDir: "public",
-  server: {
-    // Load the deployed web app
-    url: "https://camnova.rithytep.online",
-    cleartext: false,
-  },
   ios: {
     contentInset: "automatic",
     preferredContentMode: "mobile",
@@ -16,18 +11,12 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 2000,
+      launchShowDuration: 1000,
       backgroundColor: "#18181b",
-      showSpinner: true,
-      spinnerColor: "#f97316",
+      showSpinner: false,
     },
-    Keyboard: {
-      resize: "body",
-      resizeOnFullScreen: true,
-    },
-    StatusBar: {
-      style: "dark",
-      backgroundColor: "#18181b",
+    Browser: {
+      // Use SFSafariViewController for OAuth
     },
   },
 };

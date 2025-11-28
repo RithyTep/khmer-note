@@ -221,7 +221,7 @@ const ProjectItem = memo(function ProjectItem({
   return (
     <div
       onClick={onSelect}
-      className={`group w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer ${
+      className={`group w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer [touch-action:manipulation] ${
         isSelected ? selectedStyles : defaultStyles
       }`}
     >

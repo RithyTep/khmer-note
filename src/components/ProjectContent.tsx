@@ -26,10 +26,18 @@ const EmojiPickerFallback = () => (
   </div>
 );
 
+interface User {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+}
+
 interface ProjectContentProps {
   projectId: string;
   onToggleSidebar: () => void;
   onShowToast: (message: string) => void;
+  user?: User;
 }
 
 interface HeaderProps {
@@ -114,6 +122,7 @@ export function ProjectContent({
   projectId,
   onToggleSidebar,
   onShowToast,
+  user,
 }: ProjectContentProps) {
   const { TOAST } = UI_TEXT;
   const cachedProject = useMemo(() => getCachedProject(projectId), [projectId]);
@@ -370,6 +379,7 @@ export function ProjectContent({
         onClose={() => setShowAI(false)}
         onInsert={handleAIInsert}
         getContext={getContext}
+        user={user}
       />
     </main>
   );
