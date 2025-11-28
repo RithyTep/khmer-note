@@ -324,7 +324,7 @@ export const AIAssistant = memo(function AIAssistant({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-20 right-3 w-[calc(100vw-24px)] max-w-[320px] sm:bottom-6 sm:right-6 sm:w-[380px] sm:max-w-[380px] md:w-[420px] md:max-w-[420px] h-[50vh] max-h-[400px] sm:h-[70vh] sm:max-h-[550px] bg-white dark:bg-zinc-900 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.3)] border border-zinc-200/80 dark:border-zinc-700/80 flex flex-col overflow-hidden z-50 animate-fade-in-up">
+    <div className="fixed bottom-10 right-3 w-[calc(100vw-24px)] max-w-[320px] sm:bottom-6 sm:right-6 sm:w-[380px] sm:max-w-[380px] md:w-[420px] md:max-w-[420px] h-[50vh] max-h-[400px] sm:h-[70vh] sm:max-h-[550px] bg-white dark:bg-zinc-900 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.3)] border border-zinc-200/80 dark:border-zinc-700/80 flex flex-col overflow-hidden z-50 animate-fade-in-up">
 
       {/* Decorative Top Pattern */}
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-600 via-amber-400 to-amber-600 opacity-80" />

@@ -19,7 +19,7 @@ import {
   addProjectKanbanCard,
   deleteProjectKanbanCard,
 } from "@/lib/local-db";
-import { sync, initialSync, startSyncInterval, addSyncListener, needsSync } from "@/lib/sync-service";
+import { syncProject, initialSync, forceSync, addSyncListener } from "@/lib/sync-service";
 import { DEFAULT_VALUES } from "@/lib/constants";
 
 const STATUS_CYCLE: Status[] = ["NOT_STARTED", "IN_PROGRESS", "COMPLETED"];
@@ -96,6 +96,7 @@ export function useProject(projectId: string | null) {
 
       setProject(updated);
       await saveProject(updated);
+      syncProject(updated); // Sync to server (debounced 2s)
     },
     [projectId] // Only depends on projectId, not the entire project object
   );
@@ -139,6 +140,7 @@ export function useProject(projectId: string | null) {
 
       setProject(updatedProject);
       await saveProject(updatedProject);
+      syncProject(updatedProject);
       return newTask;
     },
     [projectId]
@@ -163,6 +165,7 @@ export function useProject(projectId: string | null) {
 
       setProject(updatedProject);
       await saveProject(updatedProject);
+      syncProject(updatedProject);
     },
     [projectId]
   );
@@ -180,6 +183,7 @@ export function useProject(projectId: string | null) {
 
       setProject(updatedProject);
       await saveProject(updatedProject);
+      syncProject(updatedProject);
     },
     [projectId]
   );
@@ -227,6 +231,7 @@ export function useProject(projectId: string | null) {
 
       setProject(updatedProject);
       await saveProject(updatedProject);
+      syncProject(updatedProject);
       return newCard;
     },
     [projectId]
@@ -251,6 +256,7 @@ export function useProject(projectId: string | null) {
 
       setProject(updatedProject);
       await saveProject(updatedProject);
+      syncProject(updatedProject);
     },
     [projectId]
   );
@@ -268,6 +274,7 @@ export function useProject(projectId: string | null) {
 
       setProject(updatedProject);
       await saveProject(updatedProject);
+      syncProject(updatedProject);
     },
     [projectId]
   );
@@ -319,7 +326,7 @@ export function useProjects() {
     }
   }, []);
 
-  // Initialize: load from local DB, then sync if needed
+  // Initialize: load from local DB, then sync from server
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
@@ -328,22 +335,11 @@ export function useProjects() {
       // First, load from local DB (instant)
       await loadProjects();
 
-      // Then check if we need to sync with server
-      const shouldSync = await needsSync();
-      if (shouldSync) {
-        const hasLocalData = (await getAllProjects()).length > 0;
-        if (hasLocalData) {
-          // We have local data, do a background sync
-          sync();
-        } else {
-          // No local data, do initial sync
-          await initialSync();
-          await loadProjects();
-        }
+      // Then fetch latest from server and merge
+      const serverProjects = await initialSync();
+      if (serverProjects.length > 0) {
+        setProjects(serverProjects);
       }
-
-      // Start sync interval
-      startSyncInterval();
     };
 
     init();
@@ -351,9 +347,6 @@ export function useProjects() {
     // Listen for sync status changes
     const unsubscribe = addSyncListener((status) => {
       setSyncStatus(status);
-      if (status === "success") {
-        loadProjects();
-      }
     });
 
     return () => unsubscribe();
@@ -384,9 +377,10 @@ export function useProjects() {
       // Update state immediately
       setProjects((prev) => [newProject, ...prev]);
 
-      // Save to local DB
+      // Save to local DB and sync
       await saveProject(newProject);
       await setLastProjectIdToDB(newProject.id);
+      syncProject(newProject);
 
       return newProject;
     },
@@ -420,6 +414,7 @@ export function useProjects() {
 
       setProjects((prev) => [duplicated, ...prev]);
       await saveProject(duplicated);
+      syncProject(duplicated);
 
       return duplicated;
     },
@@ -438,11 +433,12 @@ export function useProjects() {
     );
 
     await saveProject(updated);
+    syncProject(updated);
   }, [projects]);
 
   // Manual sync
-  const forceSync = useCallback(async () => {
-    await sync(true);
+  const triggerForceSync = useCallback(async () => {
+    await forceSync();
     await loadProjects();
   }, [loadProjects]);
 
@@ -455,7 +451,7 @@ export function useProjects() {
     deleteProject: deleteProjectLocal,
     duplicateProject,
     toggleFavorite,
-    forceSync,
+    forceSync: triggerForceSync,
   };
 }
 
