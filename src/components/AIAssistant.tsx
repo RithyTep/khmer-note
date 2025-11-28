@@ -18,7 +18,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Image from "next/image";
-import { UI_TEXT, API_HEADERS } from "@/lib/constants";
+import { UI_TEXT, API_HEADERS, TIMING } from "@/lib/constants";
 
 // Lazy load markdown renderer (~100KB) - only loads when there are messages
 const ReactMarkdown = lazy(() => import("react-markdown"));
@@ -162,7 +162,7 @@ export const AIAssistant = memo(function AIAssistant({
   useEffect(() => {
     scrollToBottom();
     if (isOpen) {
-      setTimeout(() => textareaRef.current?.focus(), 100);
+      setTimeout(() => textareaRef.current?.focus(), TIMING.FOCUS_DELAY_MS);
     }
   }, [messages, isOpen, scrollToBottom]);
 
@@ -311,7 +311,7 @@ export const AIAssistant = memo(function AIAssistant({
     setInput("");
     setChatId(null);
     setShowHistory(false);
-    setTimeout(() => textareaRef.current?.focus(), 100);
+    setTimeout(() => textareaRef.current?.focus(), TIMING.FOCUS_DELAY_MS);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

@@ -1,0 +1,48 @@
+"use client";
+
+import { useEffect } from "react";
+
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    console.error("Application error:", error);
+  }, [error]);
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+      <div className="text-center max-w-md">
+        <div className="mb-6 text-6xl">😔</div>
+        <h1 className="mb-2 text-2xl font-bold text-foreground">
+          មានបញ្ហាកើតឡើង
+        </h1>
+        <p className="mb-6 text-muted-foreground">
+          សូមអភ័យទោស មានបញ្ហាមួយបានកើតឡើង។ សូមព្យាយាមម្តងទៀត។
+        </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <button
+            onClick={reset}
+            className="rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            ព្យាយាមម្តងទៀត
+          </button>
+          <button
+            onClick={() => (window.location.href = "/")}
+            className="rounded-lg border border-border px-6 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+          >
+            ត្រឡប់ទៅទំព័រដើម
+          </button>
+        </div>
+        {error.digest && (
+          <p className="mt-6 text-xs text-muted-foreground">
+            Error ID: {error.digest}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}

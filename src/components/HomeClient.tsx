@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useCallback, memo, lazy, Suspense, useEffect } from "react";
+import { useCallback, memo, lazy, Suspense, useEffect, useRef } from "react";
 import { signOut } from "next-auth/react";
 import { Sidebar } from "@/components/Sidebar";
 import { Toast } from "@/components/Toast";
-import { useProjects } from "@/hooks/useProject";
-import { useProjectSelection } from "@/hooks/useProjectSelection";
+import {
+  useProjectStore,
+  useProjects,
+  useSyncStatus,
+  useUIStore,
+  useSidebarState,
+} from "@/store";
+import { useProjectSync } from "@/hooks/useProjectSync";
+import { trpc } from "@/lib/trpc";
 import { useKeyboardShortcut } from "@/hooks/useClickOutside";
 import { getCachedProject } from "@/lib/cache-client";
 import { UI_TEXT, DEFAULT_VALUES } from "@/lib/constants";
@@ -60,30 +67,57 @@ function SearchModalFallback() {
 }
 
 export function HomeClient({ user, initialProjectId }: HomeClientProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const projects = useProjects();
+  const syncStatus = useSyncStatus();
+  const { isOpen: sidebarOpen, toggle: toggleSidebar, close: closeSidebar } = useSidebarState();
+  const { isSearchOpen, setSearchOpen, toast, setToast, clearToast } = useUIStore();
 
-  const { projects, loading, createProject, refetch } = useProjects();
-  const { selectedId, selectProject, handleDelete, handleToggleFavorite, isReady } =
-    useProjectSelection({ projects, onRefetch: refetch, initialProjectId });
+  const {
+    currentProjectId,
+    setCurrentProjectId,
+    createProject,
+    deleteProject,
+    toggleFavorite,
+    isLoading,
+    loadProjects,
+  } = useProjectStore();
+
+  const { initialSync } = useProjectSync();
+  const deleteMutation = trpc.project.delete.useMutation();
+
+  const initializedRef = useRef(false);
+
+  useEffect(() => {
+    if (initialProjectId && !currentProjectId) {
+      setCurrentProjectId(initialProjectId);
+    }
+  }, [initialProjectId, currentProjectId, setCurrentProjectId]);
+
+  useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
+    loadProjects();
+    initialSync();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useKeyboardShortcut("k", () => setSearchOpen(true), { meta: true });
 
   useEffect(() => {
-    if (!selectedId) {
+    if (!currentProjectId) {
       document.title = "Camnova";
     }
-  }, [selectedId]);
+  }, [currentProjectId]);
 
-  const showToast = useCallback((message: string) => setToast(message), []);
+  const showToast = useCallback((message: string) => setToast(message), [setToast]);
   const { TOAST } = UI_TEXT;
 
   const handleCreateProject = useCallback(async () => {
     const project = await createProject(DEFAULT_VALUES.NEW_PROJECT_TITLE, user.id);
-    selectProject(project.id);
+    setCurrentProjectId(project.id);
     showToast(TOAST.PROJECT_CREATED);
-  }, [createProject, user.id, selectProject, showToast, TOAST]);
+  }, [createProject, user.id, setCurrentProjectId, showToast, TOAST]);
 
   const handleDuplicateProject = useCallback(
     async (projectId: string) => {
@@ -95,60 +129,72 @@ export function HomeClient({ user, initialProjectId }: HomeClientProps) {
         user.id,
         project.content as Record<string, unknown>[] | undefined
       );
-      selectProject(newProject.id);
+      setCurrentProjectId(newProject.id);
       showToast(TOAST.PROJECT_DUPLICATED);
     },
-    [projects, createProject, user.id, selectProject, showToast, TOAST]
+    [projects, createProject, user.id, setCurrentProjectId, showToast, TOAST]
   );
 
   const handleRenameProject = useCallback(
     (projectId: string) => {
-      selectProject(projectId);
+      setCurrentProjectId(projectId);
       showToast(TOAST.CLICK_TO_RENAME);
     },
-    [selectProject, showToast, TOAST]
+    [setCurrentProjectId, showToast, TOAST]
   );
 
   const handleDeleteProject = useCallback(
-    (projectId: string) => {
-      handleDelete(projectId);
+    async (projectId: string) => {
+      await deleteProject(projectId);
+
+      if (currentProjectId === projectId) {
+        const remaining = projects.filter((p) => p.id !== projectId);
+        if (remaining.length > 0) {
+          setCurrentProjectId(remaining[0].id);
+        } else {
+          setCurrentProjectId(null);
+        }
+      }
+
+      if (!projectId.startsWith("temp-")) {
+        deleteMutation.mutate({ id: projectId });
+      }
+
       showToast(TOAST.PROJECT_DELETED);
     },
-    [handleDelete, showToast, TOAST]
+    [deleteProject, currentProjectId, projects, setCurrentProjectId, deleteMutation, showToast, TOAST]
   );
 
   const handleFavorite = useCallback(
     async (projectId: string) => {
-      const newValue = await handleToggleFavorite(projectId);
-      showToast(newValue ? TOAST.ADDED_TO_FAVORITES : TOAST.REMOVED_FROM_FAVORITES);
+      await toggleFavorite(projectId);
+      const project = projects.find((p) => p.id === projectId);
+      showToast(project?.isFavorite ? TOAST.REMOVED_FROM_FAVORITES : TOAST.ADDED_TO_FAVORITES);
     },
-    [handleToggleFavorite, showToast, TOAST]
+    [toggleFavorite, projects, showToast, TOAST]
   );
 
   const handleSearchSelect = useCallback(
     (id: string) => {
-      selectProject(id);
+      setCurrentProjectId(id);
       setSearchOpen(false);
     },
-    [selectProject]
+    [setCurrentProjectId, setSearchOpen]
   );
 
   const handleSignOut = useCallback(() => {
     signOut({ callbackUrl: "/login" });
   }, []);
 
-  const toggleSidebar = useCallback(() => setSidebarOpen((prev) => !prev), []);
-  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
-  const openSearch = useCallback(() => setSearchOpen(true), []);
-  const closeSearch = useCallback(() => setSearchOpen(false), []);
-  const closeToast = useCallback(() => setToast(null), []);
+  const openSearch = useCallback(() => setSearchOpen(true), [setSearchOpen]);
+  const closeSearch = useCallback(() => setSearchOpen(false), [setSearchOpen]);
 
   const renderMainContent = () => {
-    if (selectedId) {
+    if (currentProjectId) {
       return (
         <Suspense fallback={<ProjectContentSkeleton />}>
           <ProjectContent
-            projectId={selectedId}
+            projectId={currentProjectId}
             onToggleSidebar={toggleSidebar}
             onShowToast={showToast}
             user={user}
@@ -157,7 +203,7 @@ export function HomeClient({ user, initialProjectId }: HomeClientProps) {
       );
     }
 
-    if (!isReady || loading) {
+    if (isLoading) {
       return <ProjectContentSkeleton />;
     }
 
@@ -170,10 +216,10 @@ export function HomeClient({ user, initialProjectId }: HomeClientProps) {
 
   return (
     <div className="flex w-full h-full overflow-hidden">
-      {searchOpen && (
+      {isSearchOpen && (
         <Suspense fallback={<SearchModalFallback />}>
           <SearchModal
-            isOpen={searchOpen}
+            isOpen={isSearchOpen}
             onClose={closeSearch}
             projects={projects}
             onSelectProject={handleSearchSelect}
@@ -186,8 +232,8 @@ export function HomeClient({ user, initialProjectId }: HomeClientProps) {
         onClose={closeSidebar}
         onOpenSearch={openSearch}
         projects={projects}
-        selectedProjectId={selectedId}
-        onSelectProject={selectProject}
+        selectedProjectId={currentProjectId}
+        onSelectProject={setCurrentProjectId}
         onCreateProject={handleCreateProject}
         onToggleFavorite={handleFavorite}
         onDuplicateProject={handleDuplicateProject}
@@ -199,7 +245,7 @@ export function HomeClient({ user, initialProjectId }: HomeClientProps) {
 
       {renderMainContent()}
 
-      <Toast message={toast} onClose={closeToast} />
+      <Toast message={toast} onClose={clearToast} />
     </div>
   );
 }

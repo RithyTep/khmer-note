@@ -15,7 +15,9 @@ export function AuthProvider({ children, session }: AuthProviderProps) {
     // This ensures that static curl requests will expire quickly
     const updateToken = () => {
       const token = btoa(Date.now().toString());
-      document.cookie = `kn-client-token=${token}; path=/; max-age=86400; SameSite=Lax`;
+      const isSecure = window.location.protocol === 'https:';
+      const secureFlag = isSecure ? '; Secure' : '';
+      document.cookie = `kn-client-token=${token}; path=/; max-age=86400; SameSite=Strict${secureFlag}`;
     };
 
     updateToken(); // Initial set
