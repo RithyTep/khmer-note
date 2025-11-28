@@ -1,7 +1,7 @@
 "use client";
 
 import type { Project } from "@/types";
-import { getAllProjects, saveProject as saveToLocal, getProject } from "./local-db";
+import { getAllProjects, saveProjects, clearProjects } from "./local-db";
 import { API_HEADERS } from "./constants";
 
 type SyncStatus = "idle" | "syncing" | "success" | "error";
@@ -143,6 +143,13 @@ export async function initialSync(): Promise<Project[]> {
     }
 
     const merged = Array.from(projectMap.values());
+
+    // Save merged projects to local DB
+    if (merged.length > 0) {
+      await clearProjects();
+      await saveProjects(merged);
+    }
+
     notifyListeners("success", "Synced");
     return merged;
   } catch (error) {
