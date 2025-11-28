@@ -1,81 +1,102 @@
-# Khmer Note (កម្មវិធីចំណាំខ្មែរ)
+# Camnova (កម្មវិធីចំណាំខ្មែរ)
 
-A full-stack note-taking application with Khmer language support, built with Next.js, Prisma, and PostgreSQL.
+A modern note-taking application with Khmer language support, AI assistant, and offline-first architecture.
+
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/RithyTep/khmer-note/releases)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+**Live Demo:** [camnova.rithytep.online](https://camnova.rithytep.online)
 
 ## Features
 
-- **Project Management**: Create and manage multiple projects
-- **Task Lists**: Add, toggle, and delete tasks with tags
-- **Kanban Board**: Visual workflow with TODO, In Progress, and Done columns
-- **User Assignment**: Assign projects to team members
-- **Status Tracking**: Track project status (Not Started, In Progress, Completed)
-- **Favorites**: Mark projects as favorites for quick access
-- **Search**: Quick search across all projects (⌘K / Ctrl+K)
-- **Responsive Design**: Works on desktop and mobile devices
+### Core
+- **Rich Text Editor** - BlockNote-based editor with full formatting support
+- **Project Management** - Create, edit, delete, and organize notes
+- **Offline-First** - IndexedDB local storage with background sync
+- **Dark Mode** - Full dark/light theme with system preference detection
+
+### AI Assistant (Angkor AI)
+- AI-powered chat with Khmer language support
+- Quick actions: Write, Translate, Summarize, Brainstorm
+- Insert AI responses directly into editor
+- Chat history with pagination
+
+### Authentication
+- OAuth support (Google, GitHub, Facebook, Twitter)
+- Secure session management with NextAuth.js
+
+### User Interface
+- Khmer-inspired Angkor design theme
+- Responsive sidebar with favorites
+- Project search (⌘K / Ctrl+K)
+- Cover image gallery with Cambodia themes
+- Emoji picker for project icons
 
 ## Tech Stack
 
-- **Frontend**: Next.js 15, React 19, TypeScript
-- **Styling**: Tailwind CSS
-- **Database**: PostgreSQL
-- **ORM**: Prisma
-- **Icons**: Lucide React
-
-## Prerequisites
-
-- Node.js 18+
-- PostgreSQL database
-- pnpm (recommended) or npm
+- **Framework**: Next.js 16 with App Router
+- **Language**: TypeScript
+- **Database**: PostgreSQL with Prisma ORM
+- **Styling**: TailwindCSS
+- **Storage**: Vercel Blob for file uploads
+- **AI**: Groq API (Llama 3.3 70B)
+- **Auth**: NextAuth.js v5
 
 ## Getting Started
 
-### 1. Clone and Install
+### Prerequisites
+
+- Node.js 18+
+- PostgreSQL database
+- pnpm (recommended)
+
+### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/RithyTep/khmer-note.git
 cd khmer-note
+
+# Install dependencies
 pnpm install
-```
 
-### 2. Configure Database
-
-Create a `.env` file (copy from `.env.example`):
-
-```bash
+# Setup environment variables
 cp .env.example .env
 ```
 
-Update the `DATABASE_URL` in `.env` with your PostgreSQL connection string:
+### Environment Variables
 
+```env
+DATABASE_URL="postgresql://username:password@localhost:5432/camnova"
+AUTH_SECRET="your-auth-secret"
+AUTH_GOOGLE_ID="your-google-client-id"
+AUTH_GOOGLE_SECRET="your-google-client-secret"
+GROQ_API_KEY="your-groq-api-key"
+BLOB_READ_WRITE_TOKEN="your-vercel-blob-token"
 ```
-DATABASE_URL="postgresql://username:password@localhost:5432/khmer_note?schema=public"
-```
 
-### 3. Setup Database
-
-Generate Prisma client and push the schema:
+### Database Setup
 
 ```bash
+# Generate Prisma client
 pnpm db:generate
+
+# Push schema to database
 pnpm db:push
-```
 
-### 4. Seed Database (Optional)
-
-Add sample data:
-
-```bash
+# (Optional) Seed sample data
 pnpm db:seed
 ```
 
-### 5. Run Development Server
+### Development
 
 ```bash
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000)
 
-## Available Scripts
+## Scripts
 
 | Command | Description |
 |---------|-------------|
@@ -85,78 +106,48 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | `pnpm lint` | Run ESLint |
 | `pnpm db:generate` | Generate Prisma client |
 | `pnpm db:push` | Push schema to database |
-| `pnpm db:migrate` | Run database migrations |
 | `pnpm db:studio` | Open Prisma Studio |
-| `pnpm db:seed` | Seed database with sample data |
 
 ## API Endpoints
 
-### Projects
-- `GET /api/projects` - List all projects
-- `POST /api/projects` - Create a project
-- `GET /api/projects/[id]` - Get a project
-- `PATCH /api/projects/[id]` - Update a project
-- `DELETE /api/projects/[id]` - Delete a project
+### Sync API
+- `GET /api/sync` - Fetch all projects
+- `POST /api/sync` - Full sync (all projects)
+- `PATCH /api/sync` - Partial sync (changed fields only)
 
-### Tasks
-- `GET /api/tasks?projectId=xxx` - List tasks for a project
-- `POST /api/tasks` - Create a task
-- `PATCH /api/tasks/[id]` - Update a task
-- `DELETE /api/tasks/[id]` - Delete a task
+### AI API
+- `POST /api/ai` - Generate AI response
+- `GET /api/ai/chats` - List chat history
+- `GET /api/ai/chats/[id]` - Get chat messages
+- `DELETE /api/ai/chats/[id]` - Delete chat
 
-### Kanban Cards
-- `GET /api/kanban?projectId=xxx` - List kanban cards
-- `POST /api/kanban` - Create a kanban card
-- `PATCH /api/kanban/[id]` - Update a kanban card
-- `DELETE /api/kanban/[id]` - Delete a kanban card
-- `DELETE /api/kanban?projectId=xxx` - Reset kanban board
+### Upload API
+- `POST /api/upload` - Upload file to Vercel Blob
 
-### Users
-- `GET /api/users` - List all users
-- `POST /api/users` - Create a user
+## Security Features (v1.1.0)
 
-## Database Schema
+- IP-based rate limiting (200 req/min per IP)
+- CSRF/Origin validation for mutating requests
+- Payload size validation (500KB max)
+- Suspicious activity auto-blocking
+- Security headers (X-Content-Type-Options, X-Frame-Options, etc.)
 
-```prisma
-model User {
-  id        String    @id @default(cuid())
-  name      String
-  avatar    String
-  projects  Project[]
-}
+## Changelog
 
-model Project {
-  id          String       @id @default(cuid())
-  title       String
-  description String?
-  emoji       String       @default("💻")
-  status      Status       @default(IN_PROGRESS)
-  dueDate     DateTime?
-  isFavorite  Boolean      @default(false)
-  assignee    User?
-  tasks       Task[]
-  kanbanCards KanbanCard[]
-}
+See [CHANGELOG.md](CHANGELOG.md) for version history.
 
-model Task {
-  id        String  @id @default(cuid())
-  text      String
-  tag       String?
-  checked   Boolean @default(false)
-  order     Int     @default(0)
-  project   Project
-}
+## Contributing
 
-model KanbanCard {
-  id       String       @id @default(cuid())
-  text     String
-  column   KanbanColumn @default(TODO)
-  priority Priority?
-  order    Int          @default(0)
-  project  Project
-}
-```
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+Built with ❤️ in Cambodia
