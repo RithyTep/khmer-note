@@ -38,19 +38,18 @@ export function useProject(projectId: string | null) {
   // tRPC mutations
   const updateMutation = trpc.project.update.useMutation();
 
-  // Update project with optimistic update
   const updateProject = useCallback(
     async (data: UpdateProjectInput) => {
       if (!projectId) return;
 
-      // Optimistic update to store
       await storeUpdateProject(projectId, data as Partial<Project>);
 
-      // Sync with server (fire and forget)
-      updateMutation.mutate({
-        id: projectId,
-        ...data,
-      });
+      if (!projectId.startsWith("temp-")) {
+        updateMutation.mutate({
+          id: projectId,
+          ...data,
+        });
+      }
     },
     [projectId, storeUpdateProject, updateMutation]
   );

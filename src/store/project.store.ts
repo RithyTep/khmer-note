@@ -56,6 +56,7 @@ interface ProjectState {
   // Sync
   setSyncStatus: (status: "idle" | "syncing" | "success" | "error") => void;
   setProjects: (projects: Project[]) => void;
+  replaceProject: (tempId: string, serverProject: Project) => Promise<void>;
 }
 
 const STATUS_CYCLE: Status[] = ["NOT_STARTED", "IN_PROGRESS", "COMPLETED"];
@@ -489,6 +490,38 @@ export const useProjectStore = create<ProjectState>()(
           set((state) => {
             state.projects = projects;
           });
+        },
+
+        replaceProject: async (tempId, serverProject) => {
+          const { currentProjectId, projects } = get();
+          const localProject = projects.find((p) => p.id === tempId);
+
+          const mergedProject: Project = {
+            ...serverProject,
+            title: localProject?.title ?? serverProject.title,
+            content: localProject?.content ?? serverProject.content,
+            description: localProject?.description ?? serverProject.description,
+            tasks: localProject?.tasks ?? serverProject.tasks ?? [],
+            kanbanCards: localProject?.kanbanCards ?? serverProject.kanbanCards ?? [],
+            assignee: null,
+          };
+
+          set((state) => {
+            const index = state.projects.findIndex((p) => p.id === tempId);
+            if (index !== -1) {
+              state.projects[index] = mergedProject;
+            }
+            if (currentProjectId === tempId) {
+              state.currentProjectId = serverProject.id;
+              state.currentProject = mergedProject;
+            }
+          });
+
+          await deleteProjectFromDB(tempId);
+          await saveProject(mergedProject);
+          if (currentProjectId === tempId) {
+            await setLastProjectIdToDB(serverProject.id);
+          }
         },
       })),
       {

@@ -78,11 +78,13 @@ export function HomeClient({ user, initialProjectId }: HomeClientProps) {
     createProject,
     deleteProject,
     toggleFavorite,
+    replaceProject,
     isLoading,
     loadProjects,
   } = useProjectStore();
 
   const { initialSync } = useProjectSync();
+  const createMutation = trpc.project.create.useMutation();
   const deleteMutation = trpc.project.delete.useMutation();
 
   const initializedRef = useRef(false);
@@ -114,25 +116,50 @@ export function HomeClient({ user, initialProjectId }: HomeClientProps) {
   const { TOAST } = UI_TEXT;
 
   const handleCreateProject = useCallback(async () => {
-    const project = await createProject(DEFAULT_VALUES.NEW_PROJECT_TITLE, user.id);
-    setCurrentProjectId(project.id);
+    const tempProject = await createProject(DEFAULT_VALUES.NEW_PROJECT_TITLE, user.id);
+    setCurrentProjectId(tempProject.id);
     showToast(TOAST.PROJECT_CREATED);
-  }, [createProject, user.id, setCurrentProjectId, showToast, TOAST]);
+
+    createMutation.mutate(
+      { title: tempProject.title, emoji: tempProject.emoji },
+      {
+        onSuccess: (serverProject) => {
+          replaceProject(tempProject.id, {
+            ...serverProject,
+            content: serverProject.content as Record<string, unknown>[] | null,
+            assignee: null,
+          });
+        },
+      }
+    );
+  }, [createProject, user.id, setCurrentProjectId, showToast, TOAST, createMutation, replaceProject]);
 
   const handleDuplicateProject = useCallback(
     async (projectId: string) => {
       const project = getCachedProject(projectId) || projects.find((p) => p.id === projectId);
       if (!project) return;
 
-      const newProject = await createProject(
-        `${project.title} ${DEFAULT_VALUES.DUPLICATE_SUFFIX}`,
-        user.id,
-        project.content as Record<string, unknown>[] | undefined
-      );
-      setCurrentProjectId(newProject.id);
+      const title = `${project.title} ${DEFAULT_VALUES.DUPLICATE_SUFFIX}`;
+      const content = project.content as Record<string, unknown>[] | undefined;
+
+      const tempProject = await createProject(title, user.id, content);
+      setCurrentProjectId(tempProject.id);
       showToast(TOAST.PROJECT_DUPLICATED);
+
+      createMutation.mutate(
+        { title, emoji: project.emoji, content },
+        {
+          onSuccess: (serverProject) => {
+            replaceProject(tempProject.id, {
+              ...serverProject,
+              content: serverProject.content as Record<string, unknown>[] | null,
+              assignee: null,
+            });
+          },
+        }
+      );
     },
-    [projects, createProject, user.id, setCurrentProjectId, showToast, TOAST]
+    [projects, createProject, user.id, setCurrentProjectId, showToast, TOAST, createMutation, replaceProject]
   );
 
   const handleRenameProject = useCallback(
