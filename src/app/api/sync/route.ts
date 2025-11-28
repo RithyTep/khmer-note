@@ -214,67 +214,97 @@ export async function POST(request: Request) {
           },
         });
 
+        // Batch process tasks to avoid N+1 queries
         if (clientProject.tasks) {
-          for (const task of clientProject.tasks) {
-            const isNewTask = task.id.startsWith("temp-");
+          const tasksToDelete = clientProject.tasks
+            .filter(t => t._deleted && !t.id.startsWith("temp-"))
+            .map(t => t.id);
+          const tasksToCreate = clientProject.tasks
+            .filter(t => t.id.startsWith("temp-") && !t._deleted)
+            .map(t => ({
+              text: t.text,
+              tag: t.tag ?? null,
+              checked: t.checked ?? false,
+              order: t.order ?? 0,
+              projectId: clientProject.id,
+            }));
+          const tasksToUpdate = clientProject.tasks
+            .filter(t => !t.id.startsWith("temp-") && !t._deleted);
 
-            if (task._deleted && !isNewTask) {
-              await prisma.task.deleteMany({
-                where: { id: task.id, projectId: clientProject.id },
-              });
-            } else if (isNewTask) {
-              await prisma.task.create({
-                data: {
-                  text: task.text,
-                  tag: task.tag ?? null,
-                  checked: task.checked ?? false,
-                  order: task.order ?? 0,
-                  projectId: clientProject.id,
-                },
-              });
-            } else {
-              await prisma.task.updateMany({
-                where: { id: task.id, projectId: clientProject.id },
-                data: {
-                  text: task.text,
-                  tag: task.tag,
-                  checked: task.checked,
-                  order: task.order,
-                },
-              });
-            }
+          // Batch delete
+          if (tasksToDelete.length > 0) {
+            await prisma.task.deleteMany({
+              where: { id: { in: tasksToDelete }, projectId: clientProject.id },
+            });
+          }
+
+          // Batch create
+          if (tasksToCreate.length > 0) {
+            await prisma.task.createMany({ data: tasksToCreate });
+          }
+
+          // Batch update using transaction for existing tasks
+          if (tasksToUpdate.length > 0) {
+            await prisma.$transaction(
+              tasksToUpdate.map(task =>
+                prisma.task.updateMany({
+                  where: { id: task.id, projectId: clientProject.id },
+                  data: {
+                    text: task.text,
+                    tag: task.tag,
+                    checked: task.checked,
+                    order: task.order,
+                  },
+                })
+              )
+            );
           }
         }
 
+        // Batch process kanban cards to avoid N+1 queries
         if (clientProject.kanbanCards) {
-          for (const card of clientProject.kanbanCards) {
-            const isNewCard = card.id.startsWith("temp-");
+          const cardsToDelete = clientProject.kanbanCards
+            .filter(c => c._deleted && !c.id.startsWith("temp-"))
+            .map(c => c.id);
+          const cardsToCreate = clientProject.kanbanCards
+            .filter(c => c.id.startsWith("temp-") && !c._deleted)
+            .map(c => ({
+              text: c.text,
+              column: c.column ?? "TODO",
+              priority: c.priority ?? null,
+              order: c.order ?? 0,
+              projectId: clientProject.id,
+            }));
+          const cardsToUpdate = clientProject.kanbanCards
+            .filter(c => !c.id.startsWith("temp-") && !c._deleted);
 
-            if (card._deleted && !isNewCard) {
-              await prisma.kanbanCard.deleteMany({
-                where: { id: card.id, projectId: clientProject.id },
-              });
-            } else if (isNewCard) {
-              await prisma.kanbanCard.create({
-                data: {
-                  text: card.text,
-                  column: card.column ?? "TODO",
-                  priority: card.priority ?? null,
-                  order: card.order ?? 0,
-                  projectId: clientProject.id,
-                },
-              });
-            } else {
-              await prisma.kanbanCard.updateMany({
-                where: { id: card.id, projectId: clientProject.id },
-                data: {
-                  text: card.text,
-                  column: card.column,
-                  priority: card.priority,
-                  order: card.order,
-                },
-              });
-            }
+          // Batch delete
+          if (cardsToDelete.length > 0) {
+            await prisma.kanbanCard.deleteMany({
+              where: { id: { in: cardsToDelete }, projectId: clientProject.id },
+            });
+          }
+
+          // Batch create
+          if (cardsToCreate.length > 0) {
+            await prisma.kanbanCard.createMany({ data: cardsToCreate });
+          }
+
+          // Batch update using transaction for existing cards
+          if (cardsToUpdate.length > 0) {
+            await prisma.$transaction(
+              cardsToUpdate.map(card =>
+                prisma.kanbanCard.updateMany({
+                  where: { id: card.id, projectId: clientProject.id },
+                  data: {
+                    text: card.text,
+                    column: card.column,
+                    priority: card.priority,
+                    order: card.order,
+                  },
+                })
+              )
+            );
           }
         }
 

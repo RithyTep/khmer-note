@@ -16,20 +16,25 @@ const CONFIG = {
   maxBodySize: 1024 * 100,
 };
 
-// Content Security Policy directives
+const isDev = process.env.NODE_ENV === "development";
+
 const CSP_DIRECTIVES = {
   "default-src": ["'self'"],
   "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://accounts.google.com"],
   "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
   "img-src": ["'self'", "data:", "blob:", "https:", "*.googleusercontent.com"],
   "font-src": ["'self'", "https://fonts.gstatic.com"],
-  "connect-src": ["'self'", "https://accounts.google.com"],
+  "connect-src": [
+    "'self'",
+    "https://accounts.google.com",
+    ...(isDev ? ["ws://localhost:*", "ws://127.0.0.1:*", "http://localhost:*"] : []),
+  ],
   "frame-src": ["'self'", "https://accounts.google.com"],
   "frame-ancestors": ["'none'"],
   "form-action": ["'self'"],
   "base-uri": ["'self'"],
   "object-src": ["'none'"],
-  "upgrade-insecure-requests": [],
+  ...(isDev ? {} : { "upgrade-insecure-requests": [] }),
 };
 
 function buildCSP(): string {
@@ -124,7 +129,6 @@ function markSuspicious(ip: string): boolean {
 }
 
 function createBlockedResponse(reason: string, retryAfter?: number): NextResponse {
-  // Generate a fake request ID for the "security checkpoint" look
   const requestId = `sin1::${Date.now().toString(36)}-${Math.random().toString(36).substring(2)}`;
   
   const html = `<!DOCTYPE html>
@@ -248,8 +252,6 @@ export function middleware(request: NextRequest) {
   const ip = getClientIP(request);
   const userAgent = request.headers.get("user-agent");
 
-  // Only block API requests for suspicious IPs
-  // This allows the user to load the UI and potentially fix their session (e.g. get a new cookie)
   if (pathname.startsWith("/api/") && isIPBlocked(ip)) {
     const blockUntil = ipBlockList.get(ip) || Date.now();
     const retryAfter = Math.ceil((blockUntil - Date.now()) / 1000);
@@ -266,23 +268,16 @@ export function middleware(request: NextRequest) {
     return createBlockedResponse("Invalid request");
   }
 
-  // Challenge: Verify Client Headers & Origin
-  // Exclude /api/auth from strict checks as NextAuth handles its own security
   if (pathname.startsWith("/api/") && !pathname.startsWith("/api/auth")) {
     const clientKey = request.headers.get(API_HEADERS.CLIENT_KEY);
     const origin = request.headers.get("origin");
     const referer = request.headers.get("referer");
     const host = request.headers.get("host");
-
-    // 1. Check Custom Header
     if (clientKey !== API_HEADERS.CLIENT_VALUE) {
       markSuspicious(ip);
       return createBlockedResponse("Unauthorized Client: Missing or invalid client key");
     }
 
-    // 2. Check Origin/Referer (Basic protection against direct curl/postman)
-    // Note: This might block server-side calls if they don't set these headers.
-    // Ensure your server-side fetches (if any) include the client key.
     if (!origin && !referer) {
       markSuspicious(ip);
       return createBlockedResponse("Unauthorized Client: Missing origin or referer");
@@ -293,13 +288,9 @@ export function middleware(request: NextRequest) {
        return createBlockedResponse("Unauthorized Client: Invalid referer");
     }
 
-    // 3. Check Sec-Fetch-* Headers (Browser-only headers)
-    // These headers are "forbidden headers" and cannot be set by JavaScript,
-    // making them a strong indicator of a real browser.
     const secFetchSite = request.headers.get("sec-fetch-site");
     const secFetchMode = request.headers.get("sec-fetch-mode");
 
-    // If headers are present, validate them
     if (secFetchSite && !["same-origin", "same-site", "none"].includes(secFetchSite)) {
       markSuspicious(ip);
       return createBlockedResponse("Unauthorized Client: Invalid fetch site");
@@ -310,11 +301,8 @@ export function middleware(request: NextRequest) {
       return createBlockedResponse("Unauthorized Client: Invalid fetch mode");
     }
 
-    // 4. Check Client Cookie (JS Challenge)
-    // This requires the client to have executed JS to set the cookie.
-    // The token is time-based and expires quickly (10s window), preventing replay attacks.
     const clientToken = request.cookies.get("kn-client-token");
-    
+
     if (!clientToken) {
       markSuspicious(ip);
       return createBlockedResponse("Enable JavaScript to continue");
@@ -323,9 +311,9 @@ export function middleware(request: NextRequest) {
     try {
       const timestamp = parseInt(atob(clientToken.value), 10);
       const now = Date.now();
-      
-      // Allow 10 seconds drift/delay
-      if (isNaN(timestamp) || now - timestamp > 10000 || now - timestamp < -5000) {
+      const maxAge = 5000;
+
+      if (isNaN(timestamp) || now - timestamp > maxAge || now - timestamp < -5000) {
         markSuspicious(ip);
         return createBlockedResponse("Enable JavaScript to continue");
       }
@@ -354,27 +342,16 @@ export function middleware(request: NextRequest) {
 
   const response = NextResponse.next();
 
-  // Security Headers
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-XSS-Protection", "1; mode=block");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()");
-
-  // Content Security Policy
   response.headers.set("Content-Security-Policy", buildCSP());
-
-  // HSTS - Strict Transport Security (1 year, include subdomains, preload)
   response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
-
-  // Prevent MIME type sniffing
   response.headers.set("X-DNS-Prefetch-Control", "off");
-
-  // Cross-Origin policies
   response.headers.set("Cross-Origin-Opener-Policy", "same-origin");
   response.headers.set("Cross-Origin-Resource-Policy", "same-origin");
-
-  // Rate limit headers
   response.headers.set("X-RateLimit-Limit", CONFIG.globalLimit.toString());
   response.headers.set("X-RateLimit-Remaining", rateCheck.remaining.toString());
 

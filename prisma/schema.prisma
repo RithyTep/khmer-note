@@ -108,6 +108,7 @@ model AiChat {
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
+  @@index([userId])
   @@map("ai_chats")
 }
 
@@ -119,6 +120,7 @@ model AiMessage {
   chat      AiChat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
+  @@index([chatId])
   @@map("ai_messages")
 }
 
@@ -143,6 +145,7 @@ model Task {
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
+  @@index([projectId])
   @@map("tasks")
 }
 
@@ -174,6 +177,7 @@ model KanbanCard {
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
+  @@index([projectId])
   @@map("kanban_cards")
 }
 

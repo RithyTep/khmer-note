@@ -39,11 +39,48 @@ interface VersionRelease {
 
 const RELEASES: VersionRelease[] = [
   {
+    version: "1.2.0",
+    date: "2025-11-29",
+    title: "tRPC Migration & Enhanced Security",
+    description: "Migrated to tRPC for type-safe APIs, tightened security against curl replay attacks, and fixed sync issues.",
+    isLatest: true,
+    features: [
+      {
+        category: "tRPC Migration",
+        icon: Code2,
+        items: [
+          "Type-safe API with tRPC v11",
+          "Automatic request batching",
+          "React Query integration for caching",
+          "SuperJSON transformer for Date serialization",
+        ],
+      },
+      {
+        category: "Security Hardening",
+        icon: Shield,
+        items: [
+          "5-second token window (prevents curl replay)",
+          "Client header validation (x-camnova-client)",
+          "Sec-Fetch headers verification",
+          "Origin/Referer validation",
+        ],
+      },
+      {
+        category: "Bug Fixes",
+        icon: Zap,
+        items: [
+          "Fixed sidebar delete not persisting",
+          "Fixed Prisma undefined values in JSON",
+          "Fixed CSP WebSocket for development HMR",
+        ],
+      },
+    ],
+  },
+  {
     version: "1.1.0",
     date: "2025-01-28",
     title: "Security & Performance Update",
     description: "Major security hardening, faster sync system, and improved mobile experience.",
-    isLatest: true,
     features: [
       {
         category: "Security Enhancements",

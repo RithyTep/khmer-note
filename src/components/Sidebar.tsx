@@ -25,7 +25,7 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import { useTheme } from "next-themes";
 import { useClickOutside, useEscapeKey } from "@/hooks/useClickOutside";
-import { UI_TEXT } from "@/lib/constants";
+import { UI_TEXT, BREAKPOINTS } from "@/lib/constants";
 import type { Project } from "@/types";
 
 interface User {
@@ -353,7 +353,7 @@ export const Sidebar = memo(function Sidebar({
   const handleSelectProject = useCallback((projectId: string) => {
     onSelectProject(projectId);
     // Close sidebar on mobile (check if window width is less than md breakpoint)
-    if (typeof window !== "undefined" && window.innerWidth < 768) {
+    if (typeof window !== "undefined" && window.innerWidth < BREAKPOINTS.MOBILE) {
       onClose();
     }
   }, [onSelectProject, onClose]);

@@ -78,7 +78,14 @@ export const TIMING = {
   DEBOUNCE_CONTENT_MS: 1000,
   TOAST_DURATION: 3000,
   SYNC_INTERVAL_MS: 30 * 60 * 1000, // 30 minutes
+  FOCUS_DELAY_MS: 100, // Delay before focusing input elements
 };
+
+export const BREAKPOINTS = {
+  MOBILE: 768,
+  TABLET: 1024,
+  DESKTOP: 1280,
+} as const;
 
 export const STORAGE_KEYS = {
   PREFIX: "camnova-",
