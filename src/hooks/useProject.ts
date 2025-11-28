@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef, useEffect } from "react";
 import { useProjectStore, useCurrentProject, useProjects as useProjectsSelector } from "@/store";
 import { trpc } from "@/lib/trpc";
+import { optimizeContent } from "@/lib/content-optimizer";
 import type { Project, Task, KanbanCard, UpdateProjectInput } from "@/types";
 import type { KanbanColumn, Priority } from "@prisma/client";
 
@@ -47,7 +48,14 @@ export function useProject(projectId: string | null) {
     const changes = pendingChangesRef.current;
     if (Object.keys(changes).length === 0) return;
 
-    updateMutation.mutate({ id: projectId, ...changes });
+    const optimizedChanges = { ...changes };
+    if (optimizedChanges.content) {
+      optimizedChanges.content = optimizeContent(
+        optimizedChanges.content as Record<string, unknown>[]
+      );
+    }
+
+    updateMutation.mutate({ id: projectId, ...optimizedChanges });
     pendingChangesRef.current = {};
   }, [projectId, updateMutation]);
 
