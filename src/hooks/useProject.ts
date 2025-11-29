@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useEffect } from "react";
 import { useProjectStore, useCurrentProject, useProjects as useProjectsSelector } from "@/store";
 import { trpc } from "@/lib/trpc";
 import { optimizeContent } from "@/lib/content-optimizer";
+import { generateContentPatches, shouldUsePatch, optimizePatches, type Patch } from "@/lib/content-patch";
 import type { Project, Task, KanbanCard, UpdateProjectInput } from "@/types";
 import type { KanbanColumn, Priority } from "@prisma/client";
 
@@ -12,6 +13,7 @@ const SYNC_DEBOUNCE_MS = 2000;
 /**
  * Hook for managing a single project with tRPC mutations
  * Uses Zustand store for local state and tRPC for server sync
+ * Supports patch-based content updates for efficient syncing
  */
 export function useProject(projectId: string | null) {
   const {
@@ -39,13 +41,85 @@ export function useProject(projectId: string | null) {
   }, [projectId, projects, currentProject]);
 
   const updateMutation = trpc.project.update.useMutation();
+  const patchMutation = trpc.project.patchContent.useMutation();
   const pendingChangesRef = useRef<Partial<UpdateProjectInput>>({});
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Track content for patch generation
+  const baseContentRef = useRef<Record<string, unknown>[] | null>(null);
+  const contentVersionRef = useRef<number>(0);
+  const pendingPatchesRef = useRef<Patch[]>([]);
+
+  // Initialize base content when project loads
+  useEffect(() => {
+    if (project?.content) {
+      baseContentRef.current = project.content as Record<string, unknown>[];
+      // Get version from project if available, otherwise start at 0
+      contentVersionRef.current = (project as Project & { contentVersion?: number }).contentVersion ?? 0;
+    }
+  }, [project?.id]); // Only reset when project changes, not on every content update
 
   const flushSync = useCallback(() => {
     if (!projectId || projectId.startsWith("temp-")) return;
 
     const changes = pendingChangesRef.current;
+    const patches = pendingPatchesRef.current;
+    
+    // If we have patches and they're more efficient, use patch endpoint
+    if (patches.length > 0 && changes.content) {
+      const optimizedPatches = optimizePatches(patches);
+      
+      if (shouldUsePatch(optimizedPatches, changes.content as Record<string, unknown>[])) {
+        // Use patch-based update
+        patchMutation.mutate(
+          {
+            id: projectId,
+            patches: optimizedPatches,
+            baseVersion: contentVersionRef.current,
+          },
+          {
+            onSuccess: (result) => {
+              if (result.success && !result.conflict) {
+                // Update version and base content
+                contentVersionRef.current = result.currentVersion;
+                if (result.project?.content) {
+                  baseContentRef.current = result.project.content as Record<string, unknown>[];
+                }
+              } else if (result.conflict) {
+                // Handle conflict by falling back to full update
+                console.warn("Content conflict detected, falling back to full update");
+                const fullChanges = { ...changes };
+                if (fullChanges.content) {
+                  fullChanges.content = optimizeContent(fullChanges.content as Record<string, unknown>[]);
+                }
+                updateMutation.mutate({ id: projectId, ...fullChanges });
+              }
+            },
+            onError: () => {
+              // Fallback to full update on error
+              const fullChanges = { ...changes };
+              if (fullChanges.content) {
+                fullChanges.content = optimizeContent(fullChanges.content as Record<string, unknown>[]);
+              }
+              updateMutation.mutate({ id: projectId, ...fullChanges });
+            },
+          }
+        );
+        
+        // Clear pending patches but keep non-content changes for regular update
+        pendingPatchesRef.current = [];
+        delete pendingChangesRef.current.content;
+        
+        // If there are other changes, send them via regular update
+        if (Object.keys(pendingChangesRef.current).length > 0) {
+          updateMutation.mutate({ id: projectId, ...pendingChangesRef.current });
+        }
+        pendingChangesRef.current = {};
+        return;
+      }
+    }
+    
+    // Fall back to regular full update
     if (Object.keys(changes).length === 0) return;
 
     const optimizedChanges = { ...changes };
@@ -53,11 +127,14 @@ export function useProject(projectId: string | null) {
       optimizedChanges.content = optimizeContent(
         optimizedChanges.content as Record<string, unknown>[]
       );
+      // Update base content after sync
+      baseContentRef.current = optimizedChanges.content as Record<string, unknown>[];
     }
 
     updateMutation.mutate({ id: projectId, ...optimizedChanges });
     pendingChangesRef.current = {};
-  }, [projectId, updateMutation]);
+    pendingPatchesRef.current = [];
+  }, [projectId, updateMutation, patchMutation]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -90,6 +167,13 @@ export function useProject(projectId: string | null) {
       await storeUpdateProject(projectId, data as Partial<Project>);
 
       if (!projectId.startsWith("temp-")) {
+        // Generate patches for content changes
+        if (data.content && baseContentRef.current) {
+          const newContent = data.content as Record<string, unknown>[];
+          const { patches } = generateContentPatches(baseContentRef.current, newContent);
+          pendingPatchesRef.current = [...pendingPatchesRef.current, ...patches];
+        }
+        
         pendingChangesRef.current = { ...pendingChangesRef.current, ...data };
 
         if (syncTimeoutRef.current) {

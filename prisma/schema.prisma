@@ -70,17 +70,18 @@ model User {
 
 // Project/Document (main workspace item)
 model Project {
-  id          String    @id @default(cuid())
-  title       String
-  description String?
-  content     Json?     // BlockNote editor content (array of blocks)
-  emoji       String    @default("📝")
-  cover       String?   // Cover image URL or gradient
-  status      Status    @default(NOT_STARTED)
-  dueDate     DateTime?
-  isFavorite  Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  title          String
+  description    String?
+  content        Json?     // BlockNote editor content (array of blocks)
+  contentVersion Int       @default(0) // Version for patch conflict detection
+  emoji          String    @default("📝")
+  cover          String?   // Cover image URL or gradient
+  status         Status    @default(NOT_STARTED)
+  dueDate        DateTime?
+  isFavorite     Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   // Owner relation - each project belongs to a user
   userId String

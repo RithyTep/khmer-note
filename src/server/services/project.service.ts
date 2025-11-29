@@ -1,4 +1,6 @@
 import { db } from "../db/client";
+import { applyContentPatches } from "@/lib/content-patch";
+import type { Patch } from "@/lib/content-patch";
 import type {
   CreateProjectInput,
   UpdateProjectInput,
@@ -7,6 +9,7 @@ import type {
   UpdateTaskInput,
   CreateKanbanCardInput,
   UpdateKanbanCardInput,
+  PatchContentInput,
 } from "../schema/project.schema";
 
 function sanitizeForPrisma<T>(obj: T): T {
@@ -481,4 +484,57 @@ export async function deleteKanbanCard(userId: string, cardId: string) {
 
   await db.kanbanCard.delete({ where: { id: cardId } });
   return { success: true };
+}
+
+/**
+ * Apply content patches to a project (delta updates)
+ * Much more efficient than sending full content for large documents
+ */
+export async function patchProjectContent(
+  projectId: string,
+  userId: string,
+  input: Omit<PatchContentInput, "id">
+) {
+  const existing = await db.project.findUnique({
+    where: { id: projectId },
+    select: { userId: true, content: true, contentVersion: true },
+  });
+
+  if (!existing || existing.userId !== userId) {
+    throw new Error("Project not found or access denied");
+  }
+
+  // Check for version conflict
+  const currentVersion = existing.contentVersion ?? 0;
+  if (input.baseVersion !== currentVersion) {
+    // Version mismatch - client needs to refresh and retry
+    return {
+      success: false,
+      conflict: true,
+      currentVersion,
+      content: existing.content,
+    };
+  }
+
+  // Apply patches to existing content
+  const currentContent = (existing.content as Record<string, unknown>[] | null) ?? [];
+  const patches = input.patches as Patch[];
+  const newContent = applyContentPatches(currentContent, patches);
+
+  // Update with new content and increment version
+  const updated = await db.project.update({
+    where: { id: projectId },
+    data: {
+      content: sanitizeForPrisma(newContent) as unknown as undefined,
+      contentVersion: currentVersion + 1,
+    },
+    include: projectInclude,
+  });
+
+  return {
+    success: true,
+    conflict: false,
+    currentVersion: currentVersion + 1,
+    project: updated,
+  };
 }

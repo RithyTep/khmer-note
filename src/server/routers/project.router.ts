@@ -9,6 +9,7 @@ import {
   updateTaskSchema,
   createKanbanCardSchema,
   updateKanbanCardSchema,
+  patchContentSchema,
 } from "../schema/project.schema";
 import * as projectService from "../services/project.service";
 
@@ -38,6 +39,14 @@ export const projectRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
       return projectService.updateProject(id, ctx.user.id!, data);
+    }),
+
+  // Patch content (delta updates for large documents)
+  patchContent: protectedProcedure
+    .input(patchContentSchema)
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      return projectService.patchProjectContent(id, ctx.user.id!, data);
     }),
 
   // Delete project

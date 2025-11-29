@@ -96,6 +96,21 @@ export const updateProjectSchema = z.object({
   kanbanCards: z.array(kanbanCardSchema).optional(),
 });
 
+// Immer patch schema for delta updates
+export const patchOpSchema = z.enum(["replace", "add", "remove"]);
+
+export const patchSchema = z.object({
+  op: patchOpSchema,
+  path: z.array(z.union([z.string(), z.number()])),
+  value: z.unknown().optional(),
+});
+
+export const patchContentSchema = z.object({
+  id: z.string(),
+  patches: z.array(patchSchema),
+  baseVersion: z.number(), // For conflict detection
+});
+
 export const getByIdSchema = z.object({
   id: z.string(),
 });
@@ -118,3 +133,5 @@ export type ProjectInput = z.infer<typeof projectSchema>;
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
 export type SyncRequestInput = z.infer<typeof syncRequestSchema>;
+export type PatchContentInput = z.infer<typeof patchContentSchema>;
+export type PatchInput = z.infer<typeof patchSchema>;
