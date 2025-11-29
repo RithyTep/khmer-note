@@ -9,8 +9,5 @@ export {
   useDeleteProject
 } from "./useProjectSync";
 
-// Selection hooks
-export { useProjectSelection } from "./useProjectSelection";
-
 // Utility hooks
 export { useClickOutside, useEscapeKey, useKeyboardShortcut } from "./useClickOutside";
