@@ -398,13 +398,22 @@ export const Sidebar = memo(function Sidebar({
           </div>
           <div className="flex items-center gap-1">
             {mounted && (
-              <button
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="p-2 text-zinc-500 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 rounded-md transition-colors"
-                title="Toggle theme"
-              >
-                {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              </button>
+              <>
+                <button
+                  onClick={toggleLocale}
+                  className="p-2 text-zinc-500 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 rounded-md transition-colors"
+                  title={localeNames[locale]}
+                >
+                  <Languages className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className="p-2 text-zinc-500 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 rounded-md transition-colors"
+                  title="Toggle theme"
+                >
+                  {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                </button>
+              </>
             )}
             <button
               onClick={onClose}
@@ -468,17 +477,8 @@ export const Sidebar = memo(function Sidebar({
           </div>
         </div>
 
-        <div className="p-3 border-t border-zinc-200 dark:border-zinc-800 space-y-1">
-          {mounted && (
-            <button
-              onClick={toggleLocale}
-              className="w-full flex items-center gap-2 px-2 py-1.5 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 rounded-md transition-colors text-sm"
-            >
-              <Languages className="w-4 h-4" />
-              <span>{localeNames[locale]}</span>
-            </button>
-          )}
-          {onSignOut && (
+        {onSignOut && (
+          <div className="p-3 border-t border-zinc-200 dark:border-zinc-800">
             <button
               onClick={onSignOut}
               className="w-full flex items-center gap-2 px-2 py-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors text-sm"
@@ -486,8 +486,8 @@ export const Sidebar = memo(function Sidebar({
               <LogOut className="w-4 h-4" />
               <span>{t("signOut")}</span>
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </aside>
     </>
   );
