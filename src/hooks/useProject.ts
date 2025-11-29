@@ -89,11 +89,8 @@ export function useProject(projectId: string | null) {
           {
             onSuccess: (result) => {
               if (result.success && !result.conflict) {
-                // Update version and base content
+                // Update version only; local baseContentRef already matches after patches
                 contentVersionRef.current = result.currentVersion;
-                if (result.project?.content) {
-                  baseContentRef.current = result.project.content as Record<string, unknown>[];
-                }
               } else if (result.conflict) {
                 // Handle conflict by falling back to full update
                 console.warn("Content conflict detected, falling back to full update");

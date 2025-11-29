@@ -523,19 +523,17 @@ export async function patchProjectContent(
 
   // Update with new content and bump version
   const newVersion = currentVersion + 1;
-  const updated = await db.project.update({
+  await db.project.update({
     where: { id: projectId },
     data: {
       content: sanitizeForPrisma(newContent) as unknown as undefined,
       contentVersion: newVersion,
     },
-    include: projectInclude,
   });
 
   return {
     success: true,
     conflict: false,
     currentVersion: newVersion,
-    project: updated,
   };
 }
