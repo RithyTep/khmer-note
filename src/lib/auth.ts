@@ -2,19 +2,19 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "./prisma";
+import { db } from "@/server/db/client";
 
 const isLocalDev = process.env.NODE_ENV === "development";
 
 async function getOrCreateLocalUser() {
   const localEmail = "local@khmer-note.dev";
 
-  let user = await prisma.user.findUnique({
+  let user = await db.user.findUnique({
     where: { email: localEmail },
   });
 
   if (!user) {
-    user = await prisma.user.create({
+    user = await db.user.create({
       data: {
         email: localEmail,
         name: "Local Developer",
@@ -27,7 +27,7 @@ async function getOrCreateLocalUser() {
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: PrismaAdapter(prisma),
+  adapter: PrismaAdapter(db),
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,

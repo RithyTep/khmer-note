@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/server/db/client";
+import { logger } from "@/lib/logger";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
       MAX_LIMIT
     );
 
-    const chats = await prisma.aiChat.findMany({
+    const chats = await db.aiChat.findMany({
       where: {
         userId: session.user.id,
       },
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
       hasMore,
     });
   } catch (error) {
-    console.error("Error fetching chats:", error);
+    logger.error("Error fetching chats", error);
     return NextResponse.json(
       { error: "Failed to fetch chats" },
       { status: 500 }

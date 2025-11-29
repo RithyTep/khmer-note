@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { logger } from "@/lib/logger";
 
 export default function ProjectError({
   error,
@@ -11,7 +12,7 @@ export default function ProjectError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Project error:", error);
+    logger.error("Project error", error, { digest: error.digest });
   }, [error]);
 
   return (

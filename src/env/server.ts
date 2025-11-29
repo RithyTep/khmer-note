@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 /**
  * Server-side environment variables schema
@@ -30,10 +31,9 @@ function validateEnv() {
   const parsed = serverSchema.safeParse(process.env);
 
   if (!parsed.success) {
-    console.error(
-      "❌ Invalid server environment variables:",
-      parsed.error.flatten().fieldErrors
-    );
+    logger.warn("Invalid server environment variables", {
+      errors: parsed.error.flatten().fieldErrors,
+    });
 
     // In production, throw to prevent startup with invalid env
     if (process.env.NODE_ENV === "production") {

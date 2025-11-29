@@ -18,6 +18,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Image from "next/image";
+import { logger } from "@/lib/logger";
 import { UI_TEXT, API_HEADERS, TIMING } from "@/lib/constants";
 
 // Lazy load markdown renderer (~100KB) - only loads when there are messages
@@ -201,7 +202,7 @@ export const AIAssistant = memo(function AIAssistant({
         setNextCursor(data.nextCursor);
       }
     } catch (e) {
-      console.error(e);
+      logger.error("AI Assistant error", e);
     } finally {
       setIsLoadingMore(false);
     }
@@ -230,7 +231,7 @@ export const AIAssistant = memo(function AIAssistant({
         setShowHistory(false);
       }
     } catch (e) {
-      console.error(e);
+      logger.error("AI Assistant error", e);
     } finally {
       setIsLoading(false);
     }
@@ -256,7 +257,7 @@ export const AIAssistant = memo(function AIAssistant({
       try {
         context = await getContext();
       } catch (err) {
-        console.error("Failed to get context", err);
+        logger.error("Failed to get context", err);
       }
     }
 
@@ -294,7 +295,7 @@ export const AIAssistant = memo(function AIAssistant({
         fetchChats();
       }
     } catch (error) {
-      console.error("AI Error:", error);
+      logger.error("AI chat error", error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",

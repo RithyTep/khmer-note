@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/server/db/client";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   request: NextRequest,
@@ -14,7 +15,7 @@ export async function GET(
 
     const { id } = await params;
 
-    const chat = await prisma.aiChat.findUnique({
+    const chat = await db.aiChat.findUnique({
       where: {
         id,
         userId: session.user.id,
@@ -34,7 +35,7 @@ export async function GET(
 
     return NextResponse.json(chat);
   } catch (error) {
-    console.error("Error fetching chat:", error);
+    logger.error("Error fetching chat", error);
     return NextResponse.json(
       { error: "Failed to fetch chat" },
       { status: 500 }
@@ -54,7 +55,7 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const chat = await prisma.aiChat.findUnique({
+    const chat = await db.aiChat.findUnique({
       where: {
         id,
         userId: session.user.id,
@@ -65,7 +66,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Chat not found" }, { status: 404 });
     }
 
-    await prisma.aiChat.delete({
+    await db.aiChat.delete({
       where: {
         id,
       },
@@ -73,7 +74,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting chat:", error);
+    logger.error("Error deleting chat", error);
     return NextResponse.json(
       { error: "Failed to delete chat" },
       { status: 500 }

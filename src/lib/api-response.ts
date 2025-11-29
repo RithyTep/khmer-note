@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { logger } from "./logger";
 
 export const HTTP_STATUS = {
   OK: 200,
@@ -83,9 +84,7 @@ export function payloadTooLargeResponse() {
 }
 
 export function internalErrorResponse(action: string, resource: string, error: unknown) {
-  // Log the full error for debugging but don't expose it to the client
-  console.error(`${ERROR_MESSAGES.FAILED(action, resource)}:`, error);
-  // Return a generic error message to prevent information leakage
+  logger.error(`${ERROR_MESSAGES.FAILED(action, resource)}`, error);
   return errorResponse(ERROR_MESSAGES.FAILED(action, resource), HTTP_STATUS.INTERNAL_ERROR);
 }
 

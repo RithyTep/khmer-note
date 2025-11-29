@@ -4,6 +4,7 @@ import { memo, useState, useCallback, useRef } from "react";
 import { X, Image, Palette, Link2, Upload, Loader2 } from "lucide-react";
 import type { PutBlobResult } from "@vercel/blob";
 import { API_HEADERS } from "@/lib/constants";
+import { logger } from "@/lib/logger";
 
 const GRADIENT_COVERS = [
   "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -202,7 +203,7 @@ const UploadTab = ({ onSelect }: { onSelect: (url: string) => void }) => {
       const newBlob = (await response.json()) as PutBlobResult;
       onSelect(newBlob.url);
     } catch (error) {
-      console.error('Error uploading file:', error);
+      logger.error("Error uploading file", error);
       alert('Failed to upload file. Please try again.');
     } finally {
       setIsUploading(false);

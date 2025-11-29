@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 import type { Session } from "next-auth";
 import { auth } from "@/lib/auth";
 import { db } from "./db/client";
+import { logger } from "@/lib/logger";
 
 /**
  * Context types
@@ -63,9 +64,7 @@ const loggerMiddleware = t.middleware(async ({ path, type, next }) => {
   const result = await next();
   const duration = Date.now() - start;
 
-  if (process.env.NODE_ENV === "development") {
-    console.log(`[tRPC] ${type} ${path} - ${duration}ms`);
-  }
+  logger.debug(`tRPC ${type} ${path}`, { duration: `${duration}ms` });
 
   return result;
 });

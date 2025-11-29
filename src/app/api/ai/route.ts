@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/server/db/client";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 const MAX_PROMPT_LENGTH = 5000;
 const MAX_CONTEXT_LENGTH = 10000;
@@ -116,7 +117,7 @@ export async function POST(request: NextRequest) {
 
     if (action === "chat") {
       if (!currentChatId) {
-        const newChat = await prisma.aiChat.create({
+        const newChat = await db.aiChat.create({
           data: {
             userId: session.user.id,
             title: prompt.slice(0, 50) + (prompt.length > 50 ? "..." : ""),
@@ -125,7 +126,7 @@ export async function POST(request: NextRequest) {
         currentChatId = newChat.id;
       }
 
-      await prisma.aiMessage.create({
+      await db.aiMessage.create({
         data: {
           chatId: currentChatId,
           role: "user",
@@ -157,7 +158,7 @@ export async function POST(request: NextRequest) {
     const response = completion.choices[0]?.message?.content || "";
 
     if (action === "chat" && currentChatId) {
-      await prisma.aiMessage.create({
+      await db.aiMessage.create({
         data: {
           chatId: currentChatId,
           role: "assistant",
@@ -168,7 +169,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ response, chatId: currentChatId });
   } catch (error) {
-    console.error("AI API error:", error);
+    logger.error("AI API error", error);
     return NextResponse.json(
       { error: "Failed to generate response" },
       { status: 500 }
