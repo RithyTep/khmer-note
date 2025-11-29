@@ -1,34 +1,9 @@
 export default function ProjectLoading() {
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Sidebar skeleton */}
-      <div className="hidden w-64 border-r border-border bg-muted/30 p-4 md:block">
-        <div className="space-y-4">
-          <div className="h-8 w-32 animate-pulse rounded bg-muted" />
-          <div className="space-y-2">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-8 animate-pulse rounded bg-muted" />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Main content skeleton */}
-      <div className="flex-1 p-6">
-        {/* Cover skeleton */}
-        <div className="mb-6 h-48 animate-pulse rounded-lg bg-muted" />
-
-        {/* Title skeleton */}
-        <div className="mb-4 h-10 w-2/3 animate-pulse rounded bg-muted" />
-
-        {/* Content skeleton */}
-        <div className="space-y-3">
-          <div className="h-4 w-full animate-pulse rounded bg-muted" />
-          <div className="h-4 w-5/6 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-4/6 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-full animate-pulse rounded bg-muted" />
-          <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
-        </div>
+    <div className="flex-1 flex h-full w-full items-center justify-center bg-white dark:bg-zinc-900">
+      <div className="flex flex-col items-center gap-4">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-zinc-200 dark:border-zinc-700 border-t-blue-600 dark:border-t-blue-500" />
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">កំពុងផ្ទុក...</p>
       </div>
     </div>
   );
