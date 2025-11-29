@@ -504,15 +504,15 @@ export async function patchProjectContent(
     throw new Error("Project not found or access denied");
   }
 
-  // Check for version conflict
+  // Version conflict check
   const currentVersion = existing.contentVersion ?? 0;
   if (input.baseVersion !== currentVersion) {
-    // Version mismatch - client needs to refresh and retry
+    // Return conflict - client needs to rebase their changes
     return {
       success: false,
       conflict: true,
       currentVersion,
-      content: existing.content,
+      project: null,
     };
   }
 
@@ -521,12 +521,13 @@ export async function patchProjectContent(
   const patches = input.patches as Patch[];
   const newContent = applyContentPatches(currentContent, patches);
 
-  // Update with new content and increment version
+  // Update with new content and bump version
+  const newVersion = currentVersion + 1;
   const updated = await db.project.update({
     where: { id: projectId },
     data: {
       content: sanitizeForPrisma(newContent) as unknown as undefined,
-      contentVersion: currentVersion + 1,
+      contentVersion: newVersion,
     },
     include: projectInclude,
   });
@@ -534,7 +535,7 @@ export async function patchProjectContent(
   return {
     success: true,
     conflict: false,
-    currentVersion: currentVersion + 1,
+    currentVersion: newVersion,
     project: updated,
   };
 }
