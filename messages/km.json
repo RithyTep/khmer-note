@@ -1,0 +1,99 @@
+{
+  "ai": {
+    "title": "Angkor AI",
+    "subtitle": "បញ្ញាសិប្បនិម្មិតខ្មែរ",
+    "greeting": "សួស្ដី",
+    "greetingMessage": "ខ្ញុំគឺជាជំនួយការឆ្លាតវៃរបស់អ្នក។ តើថ្ងៃនេះខ្ញុំអាចជួយសម្រួលការងារអ្វីខ្លះដល់លោកអ្នក?",
+    "tryAsking": "សាកល្បងសួរខ្ញុំអំពីប្រវត្តិសាស្ត្រខ្មែរ ឬព័ត៌មានបច្ចេកវិទ្យា...",
+    "placeholder": "សរសេរសំណួររបស់អ្នកនៅទីនេះ...",
+    "disclaimer": "មាតិកាបង្កើតដោយ AI អាចមានកំហុស។",
+    "recentChats": "ការសន្ទនាថ្មីៗ",
+    "noChats": "គ្មានការសន្ទនាទេ",
+    "loadMore": "បង្ហាញបន្ថែម",
+    "insert": "បញ្ចូល",
+    "suggestions": {
+      "write": {
+        "label": "សរសេរអត្ថបទ",
+        "description": "រៀបចំមាតិកា និងសរសេរច្នៃប្រឌិត"
+      },
+      "translate": {
+        "label": "បកប្រែភាសា",
+        "description": "បកប្រែអត្ថបទឆ្លងកាត់ភាសា"
+      },
+      "research": {
+        "label": "ស្រាវជ្រាវ",
+        "description": "ស្រាវជ្រាវ និងស្វែងរកព័ត៌មាន"
+      },
+      "brainstorm": {
+        "label": "គំនិតថ្មីៗ",
+        "description": "បង្កើតគំនិតថ្មីៗ"
+      }
+    }
+  },
+  "sidebar": {
+    "search": "ស្វែងរក",
+    "inbox": "ប្រអប់សារ",
+    "settings": "ការកំណត់",
+    "favorites": "ចំណូលចិត្ត",
+    "allNotes": "កំណត់ត្រាទាំងអស់",
+    "noNotes": "គ្មានកំណត់ត្រាទេ",
+    "signOut": "ចាកចេញ",
+    "createNote": "បង្កើតកំណត់ត្រាថ្មី"
+  },
+  "projectMenu": {
+    "addFavorite": "បន្ថែមទៅចំណូលចិត្ត",
+    "removeFavorite": "ដកចេញពីចំណូលចិត្ត",
+    "copyLink": "ចម្លងតំណ",
+    "duplicate": "ស្ទួន",
+    "rename": "ប្តូរឈ្មោះ",
+    "moveTo": "ផ្លាស់ទីទៅ",
+    "trash": "ផ្លាស់ទីទៅធុងសំរាម",
+    "openNewTab": "បើកក្នុងផ្ទាំងថ្មី",
+    "openSidePeek": "បើកក្នុង Side Peek"
+  },
+  "toast": {
+    "projectCreated": "គម្រោងថ្មីបានបង្កើត",
+    "projectDuplicated": "បានស្ទួនកំណត់ត្រា",
+    "projectDeleted": "បានលុបកំណត់ត្រា",
+    "clickToRename": "ចុចលើចំណងជើងដើម្បីប្តូរឈ្មោះ",
+    "addedToFavorites": "បានបន្ថែមទៅចំណូលចិត្ត",
+    "removedFromFavorites": "បានដកចេញពីចំណូលចិត្ត",
+    "linkCopied": "បានចម្លងតំណ"
+  },
+  "home": {
+    "welcome": "សូមស្វាគមន៍មកកាន់ Camnova",
+    "createFirstNote": "បង្កើតកំណត់ត្រាដំបូងរបស់អ្នក",
+    "createNewNote": "បង្កើតកំណត់ត្រាថ្មី",
+    "selectNote": "សូមជ្រើសរើសកំណត់ត្រា"
+  },
+  "header": {
+    "notes": "កំណត់ត្រា",
+    "lastEdited": "កែប្រែចុងក្រោយ"
+  },
+  "search": {
+    "placeholder": "ស្វែងរកឯកសារ កិច្ចការ ឬក្រុម...",
+    "results": "លទ្ធផលស្វែងរក",
+    "recent": "លទ្ធផលថ្មីៗ",
+    "notFound": "រកមិនឃើញ",
+    "advanced": "ស្វែងរកកម្រិតខ្ពស់"
+  },
+  "defaults": {
+    "newProjectTitle": "គ្មានចំណងជើង",
+    "duplicateSuffix": "(ច្បាប់ចម្លង)"
+  },
+  "common": {
+    "loading": "កំពុងផ្ទុក...",
+    "save": "រក្សាទុក",
+    "cancel": "បោះបង់",
+    "delete": "លុប",
+    "edit": "កែប្រែ",
+    "close": "បិទ",
+    "confirm": "បញ្ជាក់",
+    "back": "ត្រឡប់ក្រោយ"
+  },
+  "language": {
+    "label": "ភាសា",
+    "km": "ភាសាខ្មែរ",
+    "en": "English"
+  }
+}

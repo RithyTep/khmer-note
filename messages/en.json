@@ -1,0 +1,99 @@
+{
+  "ai": {
+    "title": "Angkor AI",
+    "subtitle": "KHMER INTELLIGENCE",
+    "greeting": "Hello",
+    "greetingMessage": "I'm your intelligent assistant. How can I help you today?",
+    "tryAsking": "Try asking me about Khmer history or technology...",
+    "placeholder": "Write your question here...",
+    "disclaimer": "AI-generated content may be inaccurate.",
+    "recentChats": "Recent Chats",
+    "noChats": "No chats yet",
+    "loadMore": "Load More",
+    "insert": "Insert",
+    "suggestions": {
+      "write": {
+        "label": "Write",
+        "description": "Drafting content & creative writing"
+      },
+      "translate": {
+        "label": "Translate",
+        "description": "Translate text across languages"
+      },
+      "research": {
+        "label": "Research",
+        "description": "Research & information finding"
+      },
+      "brainstorm": {
+        "label": "Brainstorm",
+        "description": "Brainstorming ideas"
+      }
+    }
+  },
+  "sidebar": {
+    "search": "Search",
+    "inbox": "Inbox",
+    "settings": "Settings",
+    "favorites": "Favorites",
+    "allNotes": "All Notes",
+    "noNotes": "No notes yet",
+    "signOut": "Sign Out",
+    "createNote": "Create new note"
+  },
+  "projectMenu": {
+    "addFavorite": "Add to Favorites",
+    "removeFavorite": "Remove from Favorites",
+    "copyLink": "Copy Link",
+    "duplicate": "Duplicate",
+    "rename": "Rename",
+    "moveTo": "Move to",
+    "trash": "Move to Trash",
+    "openNewTab": "Open in New Tab",
+    "openSidePeek": "Open in Side Peek"
+  },
+  "toast": {
+    "projectCreated": "New project created",
+    "projectDuplicated": "Note duplicated",
+    "projectDeleted": "Note deleted",
+    "clickToRename": "Click title to rename",
+    "addedToFavorites": "Added to favorites",
+    "removedFromFavorites": "Removed from favorites",
+    "linkCopied": "Link copied"
+  },
+  "home": {
+    "welcome": "Welcome to Camnova",
+    "createFirstNote": "Create your first note",
+    "createNewNote": "Create new note",
+    "selectNote": "Select a note"
+  },
+  "header": {
+    "notes": "Notes",
+    "lastEdited": "Last edited"
+  },
+  "search": {
+    "placeholder": "Search documents, tasks, or groups...",
+    "results": "Search Results",
+    "recent": "Recent Results",
+    "notFound": "Not found",
+    "advanced": "Advanced Search"
+  },
+  "defaults": {
+    "newProjectTitle": "Untitled",
+    "duplicateSuffix": "(Copy)"
+  },
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "confirm": "Confirm",
+    "back": "Back"
+  },
+  "language": {
+    "label": "Language",
+    "km": "ភាសាខ្មែរ",
+    "en": "English"
+  }
+}

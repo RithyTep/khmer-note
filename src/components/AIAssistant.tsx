@@ -18,8 +18,9 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { logger } from "@/lib/logger";
-import { UI_TEXT, API_HEADERS, TIMING } from "@/lib/constants";
+import { API_HEADERS, TIMING } from "@/lib/constants";
 
 // Lazy load markdown renderer (~100KB) - only loads when there are messages
 const ReactMarkdown = lazy(() => import("react-markdown"));
@@ -154,7 +155,7 @@ export const AIAssistant = memo(function AIAssistant({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fetchedRef = useRef(false);
 
-  const { AI_ASSISTANT } = UI_TEXT;
+  const t = useTranslations("ai");
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -338,10 +339,10 @@ export const AIAssistant = memo(function AIAssistant({
           </div>
           <div className="flex flex-col">
             <h1 className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 leading-none">
-              {AI_ASSISTANT.TITLE}
+              {t("title")}
             </h1>
             <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium tracking-wide mt-0.5">
-              {AI_ASSISTANT.SUBTITLE}
+              {t("subtitle")}
             </span>
           </div>
         </div>
@@ -380,7 +381,7 @@ export const AIAssistant = memo(function AIAssistant({
           // History Panel
           <div className="space-y-2">
             <h3 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3">
-              {AI_ASSISTANT.RECENT_CHATS}
+              {t("recentChats")}
             </h3>
             {recentChats.map(chat => (
               <button
@@ -403,7 +404,7 @@ export const AIAssistant = memo(function AIAssistant({
             ))}
             {recentChats.length === 0 && (
               <div className="text-center text-zinc-400 dark:text-zinc-500 text-sm py-8">
-                {AI_ASSISTANT.NO_CHATS}
+                {t("noChats")}
               </div>
             )}
             {hasMoreChats && (
@@ -418,7 +419,7 @@ export const AIAssistant = memo(function AIAssistant({
                     Loading...
                   </>
                 ) : (
-                  AI_ASSISTANT.LOAD_MORE
+                  t("loadMore")
                 )}
               </button>
             )}
@@ -430,37 +431,37 @@ export const AIAssistant = memo(function AIAssistant({
             <div className="flex flex-col w-full">
               <div className="space-y-4 text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
                 <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight flex items-center gap-2">
-                  {AI_ASSISTANT.GREETING}
+                  {t("greeting")}
                   <span className="inline-block text-amber-500">👋</span>
                 </h2>
 
                 <p className="text-zinc-600 dark:text-zinc-400 text-sm">
-                  {AI_ASSISTANT.GREETING_MESSAGE}
+                  {t("greetingMessage")}
                 </p>
 
                 <div className="grid grid-cols-2 gap-2">
                   <SuggestionCard
                     icon={PenTool}
-                    label={AI_ASSISTANT.SUGGESTIONS.WRITE.label}
-                    description={AI_ASSISTANT.SUGGESTIONS.WRITE.description}
+                    label={t("suggestions.write.label")}
+                    description={t("suggestions.write.description")}
                     onClick={() => handleSubmit(undefined, "Help me write content")}
                   />
                   <SuggestionCard
                     icon={Languages}
-                    label={AI_ASSISTANT.SUGGESTIONS.TRANSLATE.label}
-                    description={AI_ASSISTANT.SUGGESTIONS.TRANSLATE.description}
+                    label={t("suggestions.translate.label")}
+                    description={t("suggestions.translate.description")}
                     onClick={() => handleSubmit(undefined, "Translate this text")}
                   />
                   <SuggestionCard
                     icon={Search}
-                    label={AI_ASSISTANT.SUGGESTIONS.RESEARCH.label}
-                    description={AI_ASSISTANT.SUGGESTIONS.RESEARCH.description}
+                    label={t("suggestions.research.label")}
+                    description={t("suggestions.research.description")}
                     onClick={() => handleSubmit(undefined, "Help me research")}
                   />
                   <SuggestionCard
                     icon={Lightbulb}
-                    label={AI_ASSISTANT.SUGGESTIONS.BRAINSTORM.label}
-                    description={AI_ASSISTANT.SUGGESTIONS.BRAINSTORM.description}
+                    label={t("suggestions.brainstorm.label")}
+                    description={t("suggestions.brainstorm.description")}
                     onClick={() => handleSubmit(undefined, "Brainstorm ideas for me")}
                   />
                 </div>
@@ -509,7 +510,7 @@ export const AIAssistant = memo(function AIAssistant({
                       className="mt-2 flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 px-2.5 py-1 rounded-full transition-colors border border-amber-200 dark:border-amber-800/50"
                     >
                       <ArrowRight size={10} />
-                      {AI_ASSISTANT.INSERT}
+                      {t("insert")}
                     </button>
                   )}
                 </div>
@@ -539,7 +540,7 @@ export const AIAssistant = memo(function AIAssistant({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={AI_ASSISTANT.PLACEHOLDER}
+            placeholder={t("placeholder")}
             className="ai-textarea w-full pl-3 pr-10 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:border-amber-400 dark:focus:border-amber-600 transition-all duration-200 resize-none"
             rows={1}
           />
@@ -567,7 +568,7 @@ export const AIAssistant = memo(function AIAssistant({
         <div className="flex items-center justify-center gap-2 mt-3">
           <ShieldCheck className="w-3 h-3 text-zinc-300 dark:text-zinc-600" />
           <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-normal">
-            {AI_ASSISTANT.DISCLAIMER}
+            {t("disclaimer")}
           </p>
         </div>
       </footer>

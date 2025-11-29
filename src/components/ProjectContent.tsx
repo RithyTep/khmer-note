@@ -3,13 +3,14 @@
 import { useRef, useCallback, useMemo, useState, useEffect, memo, lazy, Suspense } from "react";
 import { Menu, MoreHorizontal, Star, ImagePlus, X, Sparkles, Loader2, History } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useProject } from "@/hooks/useProject";
 import { LazyEditor } from "./LazyEditor";
 import { CoverSelector } from "./CoverSelector";
 import { AIAssistant } from "./AIAssistant";
 import { PartialBlock, BlockNoteEditor } from "@blocknote/core";
 import { getCachedProject } from "@/lib/cache-client";
-import { UI_TEXT, TIMING } from "@/lib/constants";
+import { TIMING } from "@/lib/constants";
 import { useTheme } from "next-themes";
 import type { EmojiClickData } from "emoji-picker-react";
 import { Theme as EmojiTheme } from "emoji-picker-react";
@@ -47,7 +48,8 @@ interface HeaderProps {
 }
 
 const Header = memo(function Header({ project, formattedTime, onToggleSidebar, onToggleFavorite, onOpenAI }: HeaderProps) {
-  const { HEADER, TOAST } = UI_TEXT;
+  const t = useTranslations("header");
+  const tToast = useTranslations("toast");
 
   return (
     <header className="h-12 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between px-3 sm:px-4 flex-shrink-0 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm sticky top-0 z-10">
@@ -61,7 +63,7 @@ const Header = memo(function Header({ project, formattedTime, onToggleSidebar, o
         {project && (
           <>
             <span className="hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors cursor-pointer hidden sm:inline">
-              {HEADER.NOTES}
+              {t("notes")}
             </span>
             <span className="text-zinc-300 dark:text-zinc-700 hidden sm:inline">/</span>
             <span className="text-zinc-800 dark:text-zinc-200 font-medium truncate max-w-[120px] sm:max-w-[200px]">
@@ -87,12 +89,12 @@ const Header = memo(function Header({ project, formattedTime, onToggleSidebar, o
                   ? "text-yellow-500 hover:text-yellow-600"
                   : "text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300"
               }`}
-              title={project.isFavorite ? TOAST.REMOVED_FROM_FAVORITES : TOAST.ADDED_TO_FAVORITES}
+              title={project.isFavorite ? tToast("removedFromFavorites") : tToast("addedToFavorites")}
             >
               <Star className={`w-4 h-4 ${project.isFavorite ? "fill-current" : ""}`} />
             </button>
             <span className="text-xs text-zinc-400 dark:text-zinc-500 hidden sm:block">
-              {HEADER.LAST_EDITED} {formattedTime}
+              {t("lastEdited")} {formattedTime}
             </span>
             <button className="p-1.5 text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded transition-colors">
               <MoreHorizontal className="w-4 h-4" />
@@ -122,7 +124,7 @@ export function ProjectContent({
   onShowToast,
   user,
 }: ProjectContentProps) {
-  const { TOAST } = UI_TEXT;
+  const t = useTranslations("toast");
   const cachedProject = useMemo(() => getCachedProject(projectId), [projectId]);
   const { project: fetchedProject, updateProject } = useProject(projectId);
   const project = fetchedProject || cachedProject;
@@ -226,8 +228,8 @@ export function ProjectContent({
 
   const handleToggleFavorite = useCallback(() => {
     updateProject({ isFavorite: !project?.isFavorite });
-    onShowToast(project?.isFavorite ? TOAST.REMOVED_FROM_FAVORITES : TOAST.ADDED_TO_FAVORITES);
-  }, [project?.isFavorite, updateProject, onShowToast, TOAST]);
+    onShowToast(project?.isFavorite ? t("removedFromFavorites") : t("addedToFavorites"));
+  }, [project?.isFavorite, updateProject, onShowToast, t]);
 
   const handleCoverChange = useCallback(
     (cover: string | null) => {

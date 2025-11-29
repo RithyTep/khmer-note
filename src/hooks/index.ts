@@ -11,3 +11,6 @@ export {
 
 // Utility hooks
 export { useClickOutside, useEscapeKey, useKeyboardShortcut } from "./useClickOutside";
+
+// i18n hooks
+export { useLocale } from "./useLocale";

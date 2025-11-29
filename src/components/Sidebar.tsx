@@ -19,13 +19,16 @@ import {
   LucideIcon,
   Sun,
   Moon,
+  Languages,
 } from "lucide-react";
 import { useState, useRef, useCallback, memo, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { useTheme } from "next-themes";
-import { useClickOutside, useEscapeKey } from "@/hooks/useClickOutside";
-import { UI_TEXT, BREAKPOINTS } from "@/lib/constants";
+import { useTranslations } from "next-intl";
+import { useClickOutside, useEscapeKey, useLocale } from "@/hooks";
+import { BREAKPOINTS } from "@/lib/constants";
+import { localeNames } from "@/i18n/config";
 import type { Project } from "@/types";
 
 interface User {
@@ -114,6 +117,7 @@ function ProjectItemMenu({
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const t = useTranslations("projectMenu");
 
   const closeMenu = useCallback(() => setIsOpen(false), []);
 
@@ -147,8 +151,6 @@ function ProjectItemMenu({
     setIsOpen(!isOpen);
   };
 
-  const { PROJECT_MENU } = UI_TEXT;
-
   const menuContent = isOpen && typeof document !== "undefined" ? createPortal(
     <div
       ref={menuRef}
@@ -158,26 +160,26 @@ function ProjectItemMenu({
     >
       <MenuItem
         icon={Star}
-        label={project.isFavorite ? PROJECT_MENU.REMOVE_FAVORITE : PROJECT_MENU.ADD_FAVORITE}
+        label={project.isFavorite ? t("removeFavorite") : t("addFavorite")}
         onClick={() => handleAction(onToggleFavorite)}
         iconClassName={project.isFavorite ? "fill-yellow-400 text-yellow-400" : ""}
       />
 
       <MenuDivider />
 
-      <MenuItem icon={Link} label={PROJECT_MENU.COPY_LINK} onClick={handleCopyLink} />
-      <MenuItem icon={Copy} label={PROJECT_MENU.DUPLICATE} onClick={() => handleAction(onDuplicate)} />
-      <MenuItem icon={Pencil} label={PROJECT_MENU.RENAME} onClick={() => handleAction(onRename)} />
+      <MenuItem icon={Link} label={t("copyLink")} onClick={handleCopyLink} />
+      <MenuItem icon={Copy} label={t("duplicate")} onClick={() => handleAction(onDuplicate)} />
+      <MenuItem icon={Pencil} label={t("rename")} onClick={() => handleAction(onRename)} />
 
       <MenuDivider />
 
-      <MenuItem icon={FolderInput} label={PROJECT_MENU.MOVE_TO} onClick={() => {}} disabled shortcut="→" />
-      <MenuItem icon={Trash2} label={PROJECT_MENU.TRASH} onClick={() => handleAction(onDelete)} variant="danger" />
+      <MenuItem icon={FolderInput} label={t("moveTo")} onClick={() => {}} disabled shortcut="→" />
+      <MenuItem icon={Trash2} label={t("trash")} onClick={() => handleAction(onDelete)} variant="danger" />
 
       <MenuDivider />
 
-      <MenuItem icon={ExternalLink} label={PROJECT_MENU.OPEN_NEW_TAB} onClick={handleOpenNewTab} shortcut="⌃" />
-      <MenuItem icon={PanelRight} label={PROJECT_MENU.OPEN_SIDE_PEEK} onClick={() => {}} disabled />
+      <MenuItem icon={ExternalLink} label={t("openNewTab")} onClick={handleOpenNewTab} shortcut="⌃" />
+      <MenuItem icon={PanelRight} label={t("openSidePeek")} onClick={() => {}} disabled />
     </div>,
     document.body
   ) : null;
@@ -350,8 +352,9 @@ export const Sidebar = memo(function Sidebar({
 }: SidebarProps) {
   const favoriteProjects = useMemo(() => projects.filter((p) => p.isFavorite), [projects]);
   const otherProjects = useMemo(() => projects.filter((p) => !p.isFavorite), [projects]);
-  const { SIDEBAR } = UI_TEXT;
+  const t = useTranslations("sidebar");
   const { theme, setTheme } = useTheme();
+  const { locale, toggleLocale } = useLocale();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -413,16 +416,16 @@ export const Sidebar = memo(function Sidebar({
         </div>
 
         <div className="px-3 pb-2 space-y-0.5">
-          <NavButton icon={Search} label={SIDEBAR.SEARCH} onClick={onOpenSearch} shortcut="⌘K" />
-          <NavButton icon={Inbox} label={SIDEBAR.INBOX} />
-          <NavButton icon={Settings2} label={SIDEBAR.SETTINGS} />
+          <NavButton icon={Search} label={t("search")} onClick={onOpenSearch} shortcut="⌘K" />
+          <NavButton icon={Inbox} label={t("inbox")} />
+          <NavButton icon={Settings2} label={t("settings")} />
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 py-2 space-y-6">
           {favoriteProjects.length > 0 && (
             <div>
               <h3 className="px-2 text-xs font-semibold text-zinc-400 mb-1 tracking-tight">
-                {SIDEBAR.FAVORITES}
+                {t("favorites")}
               </h3>
               <ProjectList
                 projects={favoriteProjects}
@@ -439,12 +442,12 @@ export const Sidebar = memo(function Sidebar({
           <div>
             <div className="flex items-center justify-between px-2 mb-1">
               <h3 className="text-xs font-semibold text-zinc-400 tracking-tight">
-                {SIDEBAR.ALL_NOTES}
+                {t("allNotes")}
               </h3>
               <button
                 onClick={onCreateProject}
                 className="p-1 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-200/50 rounded transition-colors"
-                title={SIDEBAR.CREATE_NOTE}
+                title={t("createNote")}
               >
                 <Plus className="w-3 h-3" />
               </button>
@@ -460,22 +463,31 @@ export const Sidebar = memo(function Sidebar({
                 onDeleteProject={onDeleteProject}
               />
             ) : projects.length === 0 ? (
-              <p className="text-xs text-zinc-400 px-2 py-2">{SIDEBAR.NO_NOTES}</p>
+              <p className="text-xs text-zinc-400 px-2 py-2">{t("noNotes")}</p>
             ) : null}
           </div>
         </div>
 
-        {onSignOut && (
-          <div className="p-3 border-t border-zinc-200">
+        <div className="p-3 border-t border-zinc-200 dark:border-zinc-800 space-y-1">
+          {mounted && (
+            <button
+              onClick={toggleLocale}
+              className="w-full flex items-center gap-2 px-2 py-1.5 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 rounded-md transition-colors text-sm"
+            >
+              <Languages className="w-4 h-4" />
+              <span>{localeNames[locale]}</span>
+            </button>
+          )}
+          {onSignOut && (
             <button
               onClick={onSignOut}
-              className="w-full flex items-center gap-2 px-2 py-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors text-sm"
+              className="w-full flex items-center gap-2 px-2 py-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors text-sm"
             >
               <LogOut className="w-4 h-4" />
-              <span>{SIDEBAR.SIGN_OUT}</span>
+              <span>{t("signOut")}</span>
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </aside>
     </>
   );
