@@ -99,13 +99,14 @@ export function useProjectSync() {
         return;
       }
 
+      // Only send metadata for sync - NOT full content (saves bandwidth)
+      // Content is synced separately via project.update or patchContent
       syncMutation.mutate({
         projects: localProjects.map((p) => ({
-          ...p,
           id: p.id,
           title: p.title,
           description: p.description,
-          content: p.content,
+          // Don't send content - it's synced separately
           emoji: p.emoji,
           cover: p.cover,
           status: p.status,
@@ -129,13 +130,13 @@ export function useProjectSync() {
     isSyncingRef.current = true;
 
     const localProjects = await getAllProjects();
+    // Only send metadata for sync - NOT full content
     syncMutation.mutate({
       projects: localProjects.map((p) => ({
-        ...p,
         id: p.id,
         title: p.title,
         description: p.description,
-        content: p.content,
+        // Don't send content - it's synced separately
         emoji: p.emoji,
         cover: p.cover,
         status: p.status,

@@ -65,11 +65,20 @@ export function useProject(projectId: string | null) {
     const changes = pendingChangesRef.current;
     const patches = pendingPatchesRef.current;
     
+    // Debug: Log what we're about to sync
+    if (changes.content) {
+      const contentSize = JSON.stringify(changes.content).length;
+      const patchSize = patches.length > 0 ? JSON.stringify(patches).length : 0;
+      console.log(`[Sync] Content: ${(contentSize / 1024).toFixed(1)}KB, Patches: ${(patchSize / 1024).toFixed(1)}KB (${patches.length} ops)`);
+    }
+    
     // If we have patches and they're more efficient, use patch endpoint
     if (patches.length > 0 && changes.content) {
       const optimizedPatches = optimizePatches(patches);
+      const contentArray = changes.content as Record<string, unknown>[];
       
-      if (shouldUsePatch(optimizedPatches, changes.content as Record<string, unknown>[])) {
+      if (shouldUsePatch(optimizedPatches, contentArray)) {
+        console.log(`[Sync] Using PATCH endpoint (${optimizedPatches.length} patches)`);
         // Use patch-based update
         patchMutation.mutate(
           {
@@ -116,12 +125,15 @@ export function useProject(projectId: string | null) {
         }
         pendingChangesRef.current = {};
         return;
+      } else {
+        console.log(`[Sync] Patches not efficient, using full UPDATE`);
       }
     }
     
     // Fall back to regular full update
     if (Object.keys(changes).length === 0) return;
 
+    console.log(`[Sync] Using full UPDATE endpoint`);
     const optimizedChanges = { ...changes };
     if (optimizedChanges.content) {
       optimizedChanges.content = optimizeContent(
@@ -168,10 +180,17 @@ export function useProject(projectId: string | null) {
 
       if (!projectId.startsWith("temp-")) {
         // Generate patches for content changes
-        if (data.content && baseContentRef.current) {
+        if (data.content) {
           const newContent = data.content as Record<string, unknown>[];
-          const { patches } = generateContentPatches(baseContentRef.current, newContent);
-          pendingPatchesRef.current = [...pendingPatchesRef.current, ...patches];
+          
+          // Only generate patches if we have a base to compare against
+          if (baseContentRef.current) {
+            const { patches } = generateContentPatches(baseContentRef.current, newContent);
+            
+            // Replace accumulated patches with fresh patches from base
+            // This ensures we always have the minimal delta from server state
+            pendingPatchesRef.current = patches;
+          }
         }
         
         pendingChangesRef.current = { ...pendingChangesRef.current, ...data };
