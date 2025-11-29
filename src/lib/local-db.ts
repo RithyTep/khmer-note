@@ -326,3 +326,32 @@ export async function deleteProjectKanbanCard(projectId: string, cardId: string)
 
   await saveProject(project);
 }
+
+export async function clearDatabase(): Promise<void> {
+  try {
+    const database = await openDB();
+    
+    // Clear all object stores
+    const storeNames = [STORES.projects, STORES.pendingChanges, STORES.metadata];
+    
+    await Promise.all(
+      storeNames.map((storeName) => {
+        return new Promise<void>((resolve, reject) => {
+          const transaction = database.transaction(storeName, "readwrite");
+          const store = transaction.objectStore(storeName);
+          const request = store.clear();
+          
+          request.onsuccess = () => resolve();
+          request.onerror = () => reject(request.error);
+        });
+      })
+    );
+    
+    // Reset the database connection
+    db = null;
+    dbPromise = null;
+  } catch (error) {
+    // If database doesn't exist or can't be opened, that's fine - nothing to clear
+    console.warn("Failed to clear database:", error);
+  }
+}

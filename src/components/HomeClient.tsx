@@ -15,7 +15,8 @@ import {
 import { useProjectSync } from "@/hooks/useProjectSync";
 import { trpc } from "@/lib/trpc";
 import { useKeyboardShortcut } from "@/hooks/useClickOutside";
-import { getCachedProject } from "@/lib/cache-client";
+import { getCachedProject, clearCache } from "@/lib/cache-client";
+import { clearDatabase } from "@/lib/local-db";
 import { ProjectContentSkeleton } from "@/components/Skeleton";
 
 const SearchModal = lazy(() => import("@/components/SearchModal").then(mod => ({ default: mod.SearchModal })));
@@ -211,7 +212,39 @@ export function HomeClient({ user, initialProjectId }: HomeClientProps) {
     [setCurrentProjectId, setSearchOpen]
   );
 
-  const handleSignOut = useCallback(() => {
+  const handleSignOut = useCallback(async () => {
+    try {
+      // Clear localStorage cache
+      clearCache();
+      
+      // Clear IndexedDB
+      await clearDatabase();
+      
+      // Clear zustand stores
+      useProjectStore.persist.clearStorage();
+      useUIStore.persist.clearStorage();
+      
+      // Reset store states
+      useProjectStore.setState({
+        projects: [],
+        currentProjectId: null,
+        currentProject: null,
+        isLoading: false,
+        syncStatus: "idle",
+        lastSyncAt: null,
+        error: null,
+      });
+      
+      useUIStore.setState({
+        isAIAssistantOpen: false,
+        isSearchOpen: false,
+        toast: null,
+      });
+    } catch (error) {
+      console.error("Error clearing data on sign out:", error);
+    }
+    
+    // Sign out regardless of cache clearing success
     signOut({ callbackUrl: "/login" });
   }, []);
 
