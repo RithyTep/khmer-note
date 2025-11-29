@@ -218,12 +218,21 @@ const ProjectItem = memo(function ProjectItem({
   const selectedStyles = "bg-zinc-200/60 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-medium";
   const defaultStyles = "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100";
 
+  const handleClick = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    onSelect();
+  }, [onSelect]);
+
   return (
     <div
-      onClick={onSelect}
-      className={`group w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer [touch-action:manipulation] ${
+      role="button"
+      tabIndex={0}
+      onClick={handleClick}
+      onKeyDown={(e) => e.key === "Enter" && onSelect()}
+      className={`group w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer select-none ${
         isSelected ? selectedStyles : defaultStyles
       }`}
+      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
     >
       <span className="text-base">{project.emoji}</span>
       <span className="truncate flex-1">{project.title}</span>
