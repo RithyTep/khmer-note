@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 /**
  * Client-side environment variables schema
@@ -17,10 +18,9 @@ function validateClientEnv() {
   });
 
   if (!parsed.success) {
-    console.error(
-      "❌ Invalid client environment variables:",
-      parsed.error.flatten().fieldErrors
-    );
+    logger.warn("Invalid client environment variables", {
+      errors: parsed.error.flatten().fieldErrors,
+    });
   }
 
   return parsed.success ? parsed.data : {};

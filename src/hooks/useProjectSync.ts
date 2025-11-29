@@ -4,6 +4,7 @@ import { useCallback, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useProjectStore } from "@/store";
 import { getAllProjects, saveProject } from "@/lib/local-db";
+import { logger } from "@/lib/logger";
 import type { Project } from "@/types";
 
 /**
@@ -68,7 +69,7 @@ export function useProjectSync() {
       isSyncingRef.current = false;
     },
     onError: (error) => {
-      console.error("Sync failed:", error);
+      logger.error("Sync failed", error);
       setSyncStatus("error");
       isSyncingRef.current = false;
     },
@@ -117,7 +118,7 @@ export function useProjectSync() {
         })),
       });
     } catch (error) {
-      console.error("Initial sync error:", error);
+      logger.error("Initial sync error", error);
       isSyncingRef.current = false;
     }
   }, [loadProjects, syncMutation, setProjects, setSyncStatus]);

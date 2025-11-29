@@ -1,3 +1,5 @@
+import { logger } from "./logger";
+
 interface RateLimitEntry {
   count: number;
   resetTime: number;
@@ -131,7 +133,7 @@ export function ipRateLimit(request: Request): RateLimitResult {
   const suspicious = suspiciousIPs.get(ip);
   if (suspicious?.blocked) {
     if (now - suspicious.firstSeen < BLOCK_DURATION) {
-      console.warn(`[SECURITY] Blocked IP attempted access: ${ip}`);
+      logger.warn("Blocked IP attempted access", { ip });
       return {
         success: false,
         limit: 0,
@@ -159,7 +161,7 @@ function trackSuspiciousActivity(ip: string): void {
     existing.count++;
     if (existing.count >= 5) {
       existing.blocked = true;
-      console.warn(`[SECURITY] IP blocked for suspicious activity: ${ip}, hits: ${existing.count}`);
+      logger.warn("IP blocked for suspicious activity", { ip, hits: existing.count });
     }
   } else {
     suspiciousIPs.set(ip, {
@@ -167,14 +169,14 @@ function trackSuspiciousActivity(ip: string): void {
       firstSeen: now,
       blocked: false,
     });
-    console.warn(`[SECURITY] Suspicious activity detected from IP: ${ip}`);
+    logger.warn("Suspicious activity detected", { ip });
   }
 }
 
 export function checkPayloadSize(body: string, maxBytes: number = 100000): boolean {
   const size = new TextEncoder().encode(body).length;
   if (size > maxBytes) {
-    console.warn(`[SECURITY] Payload too large: ${size} bytes (max: ${maxBytes})`);
+    logger.warn("Payload too large", { size, maxBytes });
     return false;
   }
   return true;
@@ -203,6 +205,6 @@ export function validateOrigin(request: Request, allowedHosts: string[]): boolea
   if (origin && checkHost(origin)) return true;
   if (referer && checkHost(referer)) return true;
 
-  console.warn(`[SECURITY] Invalid origin: ${origin || referer}`);
+  logger.warn("Invalid origin", { origin: origin || referer });
   return false;
 }
