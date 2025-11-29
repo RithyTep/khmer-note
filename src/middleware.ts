@@ -20,16 +20,17 @@ const isDev = process.env.NODE_ENV === "development";
 
 const CSP_DIRECTIVES = {
   "default-src": ["'self'"],
-  "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://accounts.google.com"],
+  "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://accounts.google.com", "https://vercel.live"],
   "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
   "img-src": ["'self'", "data:", "blob:", "https:", "*.googleusercontent.com"],
   "font-src": ["'self'", "https://fonts.gstatic.com"],
   "connect-src": [
     "'self'",
     "https://accounts.google.com",
+    "https://vercel.live",
     ...(isDev ? ["ws://localhost:*", "ws://127.0.0.1:*", "http://localhost:*"] : []),
   ],
-  "frame-src": ["'self'", "https://accounts.google.com"],
+  "frame-src": ["'self'", "https://accounts.google.com", "https://vercel.live"],
   "frame-ancestors": ["'none'"],
   "form-action": ["'self'"],
   "base-uri": ["'self'"],
