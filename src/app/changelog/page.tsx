@@ -113,14 +113,6 @@ const RELEASES: VersionRelease[] = [
           "Better user profile display",
         ],
       },
-      {
-        category: "Native App",
-        icon: Rocket,
-        items: [
-          "Capacitor iOS setup",
-          "Initial native app configuration",
-        ],
-      },
     ],
   },
   {
@@ -221,7 +213,6 @@ const RELEASES: VersionRelease[] = [
 const UPCOMING_FEATURES = [
   "Collaborative editing",
   "Export to PDF/Word",
-  "Mobile app (React Native)",
   "Custom themes",
   "Folder organization",
   "Tags and labels",
