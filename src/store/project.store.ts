@@ -129,6 +129,11 @@ export const useProjectStore = create<ProjectState>()(
             status: "NOT_STARTED",
             dueDate: null,
             isFavorite: false,
+            isSmallText: false,
+            isFullWidth: false,
+            isLocked: false,
+            isPublished: false,
+            publishedUrl: null,
             userId,
             assigneeId: null,
             assignee: null,
@@ -504,6 +509,11 @@ export const useProjectStore = create<ProjectState>()(
             tasks: localProject?.tasks ?? serverProject.tasks ?? [],
             kanbanCards: localProject?.kanbanCards ?? serverProject.kanbanCards ?? [],
             assignee: null,
+            isSmallText: localProject?.isSmallText ?? serverProject.isSmallText ?? false,
+            isFullWidth: localProject?.isFullWidth ?? serverProject.isFullWidth ?? false,
+            isLocked: localProject?.isLocked ?? serverProject.isLocked ?? false,
+            isPublished: localProject?.isPublished ?? serverProject.isPublished ?? false,
+            publishedUrl: localProject?.publishedUrl ?? serverProject.publishedUrl ?? null,
           };
 
           set((state) => {

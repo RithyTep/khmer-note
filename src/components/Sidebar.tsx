@@ -20,6 +20,17 @@ import {
   Sun,
   Moon,
   Languages,
+  Type,
+  Maximize2,
+  Lock,
+  Unlock,
+  Download,
+  Upload,
+  FileText,
+  FileJson,
+  Check,
+  Globe,
+  Share2,
 } from "lucide-react";
 import { useState, useRef, useCallback, memo, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -29,6 +40,8 @@ import { useTranslations } from "next-intl";
 import { useClickOutside, useEscapeKey, useLocale } from "@/hooks";
 import { BREAKPOINTS } from "@/lib/constants";
 import { localeNames } from "@/i18n/config";
+import { useProjectStore } from "@/store/project.store";
+import { trpc } from "@/lib/trpc";
 import type { Project } from "@/types";
 
 interface User {
@@ -114,12 +127,22 @@ function ProjectItemMenu({
   onDelete,
 }: ProjectItemMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [showExportSubmenu, setShowExportSubmenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const t = useTranslations("projectMenu");
 
-  const closeMenu = useCallback(() => setIsOpen(false), []);
+  const { updateProject, createProject } = useProjectStore();
+  
+  // tRPC mutation for immediate server sync
+  const updateMutation = trpc.project.update.useMutation();
+
+  const closeMenu = useCallback(() => {
+    setIsOpen(false);
+    setShowExportSubmenu(false);
+  }, []);
 
   useClickOutside([menuRef, buttonRef], closeMenu, isOpen);
   useEscapeKey(closeMenu, isOpen);
@@ -130,12 +153,207 @@ function ProjectItemMenu({
   };
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/?project=${project.id}`);
+    navigator.clipboard.writeText(`${window.location.origin}/p/${project.id}`);
     closeMenu();
   };
 
   const handleOpenNewTab = () => {
-    window.open(`/?project=${project.id}`, "_blank");
+    window.open(`/p/${project.id}`, "_blank");
+    closeMenu();
+  };
+
+  const handleToggleSmallText = async () => {
+    const newValue = !project.isSmallText;
+    updateProject(project.id, { isSmallText: newValue });
+    try {
+      await updateMutation.mutateAsync({ id: project.id, isSmallText: newValue });
+    } catch (error) {
+      console.error("Failed to sync:", error);
+    }
+    closeMenu();
+  };
+
+  const handleToggleFullWidth = async () => {
+    const newValue = !project.isFullWidth;
+    updateProject(project.id, { isFullWidth: newValue });
+    try {
+      await updateMutation.mutateAsync({ id: project.id, isFullWidth: newValue });
+    } catch (error) {
+      console.error("Failed to sync:", error);
+    }
+    closeMenu();
+  };
+
+  const handleToggleLock = async () => {
+    const newValue = !project.isLocked;
+    updateProject(project.id, { isLocked: newValue });
+    try {
+      await updateMutation.mutateAsync({ id: project.id, isLocked: newValue });
+    } catch (error) {
+      console.error("Failed to sync:", error);
+    }
+    closeMenu();
+  };
+
+  const handleTogglePublish = async () => {
+    const isPublishing = !project.isPublished;
+    const publishedUrl = isPublishing ? `${window.location.origin}/public/${project.id}` : null;
+    
+    // Update local state
+    updateProject(project.id, { 
+      isPublished: isPublishing,
+      publishedUrl,
+    });
+    
+    // Sync to server immediately
+    try {
+      await updateMutation.mutateAsync({
+        id: project.id,
+        isPublished: isPublishing,
+        publishedUrl,
+      });
+    } catch (error) {
+      console.error("Failed to sync publish state:", error);
+    }
+    
+    closeMenu();
+  };
+
+  const handleCopyPublishLink = async () => {
+    const publicUrl = `${window.location.origin}/public/${project.id}`;
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+    } catch (error) {
+      console.error("Failed to copy:", error);
+    }
+    closeMenu();
+  };
+
+  const handleExportMarkdown = () => {
+    try {
+      let markdown = `# ${project.title}\n\n`;
+      if (project.content) {
+        const contentObj = typeof project.content === "string" 
+          ? JSON.parse(project.content) 
+          : project.content;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const convertToMarkdown = (node: any): string => {
+          if (!node) return "";
+          let result = "";
+          switch (node.type) {
+            case "doc":
+              if (node.content) result = node.content.map(convertToMarkdown).join("\n");
+              break;
+            case "paragraph":
+              if (node.content) result = node.content.map(convertToMarkdown).join("") + "\n";
+              else result = "\n";
+              break;
+            case "heading": {
+              const level = node.attrs?.level || 1;
+              const text = node.content ? node.content.map(convertToMarkdown).join("") : "";
+              result = `${"#".repeat(level)} ${text}\n`;
+              break;
+            }
+            case "bulletList":
+            case "orderedList":
+              if (node.content) result = node.content.map(convertToMarkdown).join("");
+              break;
+            case "listItem":
+              if (node.content) {
+                const itemContent = node.content.map(convertToMarkdown).join("").trim();
+                result = `- ${itemContent}\n`;
+              }
+              break;
+            case "text":
+              result = node.text || "";
+              break;
+            default:
+              if (node.content) result = node.content.map(convertToMarkdown).join("");
+              else if (node.text) result = node.text;
+          }
+          return result;
+        };
+        markdown += convertToMarkdown(contentObj);
+      }
+      const blob = new Blob([markdown], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${project.title || "untitled"}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export error:", error);
+    }
+    closeMenu();
+  };
+
+  const handleExportJSON = () => {
+    try {
+      const exportData = {
+        title: project.title,
+        content: project.content,
+        emoji: project.emoji,
+        cover: project.cover,
+        isSmallText: project.isSmallText,
+        isFullWidth: project.isFullWidth,
+        exportedAt: new Date().toISOString(),
+      };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${project.title || "untitled"}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export error:", error);
+    }
+    closeMenu();
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        if (file.name.endsWith(".json")) {
+          const importData = JSON.parse(content);
+          createProject(importData.title || "Imported Project", project.userId, importData.content);
+        } else if (file.name.endsWith(".md") || file.name.endsWith(".txt")) {
+          const title = file.name.replace(/\.(md|txt)$/, "") || "Imported Project";
+          const lines = content.split("\n");
+          const contentNodes = lines.map((line) => {
+            if (line.startsWith("# ")) {
+              return { type: "heading", attrs: { level: 1 }, content: [{ type: "text", text: line.slice(2) }] };
+            } else if (line.startsWith("## ")) {
+              return { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: line.slice(3) }] };
+            } else if (line.startsWith("- ") || line.startsWith("* ")) {
+              return { type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: line.slice(2) }] }] }] };
+            } else if (line.trim() === "") {
+              return { type: "paragraph" };
+            } else {
+              return { type: "paragraph", content: [{ type: "text", text: line }] };
+            }
+          });
+          createProject(title, project.userId, contentNodes as Record<string, unknown>[]);
+        }
+      } catch (error) {
+        console.error("Import error:", error);
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = "";
     closeMenu();
   };
 
@@ -149,6 +367,7 @@ function ProjectItemMenu({
       });
     }
     setIsOpen(!isOpen);
+    setShowExportSubmenu(false);
   };
 
   const menuContent = isOpen && typeof document !== "undefined" ? createPortal(
@@ -158,6 +377,15 @@ function ProjectItemMenu({
       style={{ top: menuPosition.top, left: menuPosition.left }}
       onClick={(e) => e.stopPropagation()}
     >
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json,.md,.txt"
+        onChange={handleFileImport}
+        className="hidden"
+      />
+
       <MenuItem
         icon={Star}
         label={project.isFavorite ? t("removeFavorite") : t("addFavorite")}
@@ -175,6 +403,98 @@ function ProjectItemMenu({
 
       <MenuItem icon={FolderInput} label={t("moveTo")} onClick={() => {}} disabled shortcut="→" />
       <MenuItem icon={Trash2} label={t("trash")} onClick={() => handleAction(onDelete)} variant="danger" />
+
+      <MenuDivider />
+
+      {/* New Features */}
+      <button
+        onClick={handleToggleSmallText}
+        className="w-full flex items-center gap-3 px-3 py-1.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 rounded-md transition-colors"
+      >
+        <Type className="w-4 h-4" />
+        <span>{t("smallText")}</span>
+        <div className={`ml-auto w-8 h-4 rounded-full ${project.isSmallText ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-600'} relative`}>
+          <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-all ${project.isSmallText ? 'right-0.5' : 'left-0.5'}`} />
+        </div>
+      </button>
+
+      <button
+        onClick={handleToggleFullWidth}
+        className="w-full flex items-center gap-3 px-3 py-1.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 rounded-md transition-colors"
+      >
+        <Maximize2 className="w-4 h-4" />
+        <span>{t("fullWidth")}</span>
+        <div className={`ml-auto w-8 h-4 rounded-full ${project.isFullWidth ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-600'} relative`}>
+          <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-all ${project.isFullWidth ? 'right-0.5' : 'left-0.5'}`} />
+        </div>
+      </button>
+
+      <button
+        onClick={handleToggleLock}
+        className="w-full flex items-center gap-3 px-3 py-1.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 rounded-md transition-colors"
+      >
+        {project.isLocked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+        <span>{project.isLocked ? t("unlockPage") : t("lockPage")}</span>
+        {project.isLocked && <Check className="w-4 h-4 ml-auto text-blue-500" />}
+      </button>
+
+      <MenuDivider />
+
+      {/* Publish/Share Link */}
+      <button
+        onClick={handleTogglePublish}
+        className="w-full flex items-center gap-3 px-3 py-1.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 rounded-md transition-colors"
+      >
+        <Globe className="w-4 h-4" />
+        <span>{project.isPublished ? t("unpublish") : t("publishToWeb")}</span>
+        <div className={`ml-auto w-8 h-4 rounded-full ${project.isPublished ? 'bg-green-500' : 'bg-zinc-300 dark:bg-zinc-600'} relative`}>
+          <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-all ${project.isPublished ? 'right-0.5' : 'left-0.5'}`} />
+        </div>
+      </button>
+
+      {project.isPublished && (
+        <button
+          onClick={handleCopyPublishLink}
+          className="w-full flex items-center gap-3 px-3 py-1.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 rounded-md transition-colors"
+        >
+          <Share2 className="w-4 h-4" />
+          <span>{t("copyPublicLink")}</span>
+        </button>
+      )}
+
+      <MenuDivider />
+
+      <MenuItem icon={Upload} label={t("import")} onClick={handleImportClick} />
+      
+      <div className="relative">
+        <button
+          onClick={() => setShowExportSubmenu(!showExportSubmenu)}
+          className="w-full flex items-center gap-3 px-3 py-1.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 rounded-md transition-colors"
+        >
+          <Download className="w-4 h-4" />
+          <span>{t("export")}</span>
+          <span className="ml-auto text-zinc-400">›</span>
+        </button>
+        
+        {showExportSubmenu && (
+          <div className="absolute left-full top-0 ml-1 w-44 bg-white dark:bg-zinc-900 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-800 py-1 z-[101]">
+            <button
+              onClick={handleExportMarkdown}
+              className="w-full flex items-center gap-3 px-3 py-1.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 rounded-md transition-colors"
+            >
+              <FileText className="w-4 h-4" />
+              {t("exportMarkdown")}
+            </button>
+            <button
+              onClick={handleExportJSON}
+              className="w-full flex items-center gap-3 px-3 py-1.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 rounded-md transition-colors"
+            >
+              <FileJson className="w-4 h-4" />
+              {t("exportJSON")}
+            </button>
+          </div>
+        )}
+      </div>
 
       <MenuDivider />
 

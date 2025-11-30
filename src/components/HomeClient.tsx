@@ -18,9 +18,18 @@ import { useKeyboardShortcut } from "@/hooks/useClickOutside";
 import { getCachedProject, clearCache } from "@/lib/cache-client";
 import { clearDatabase } from "@/lib/local-db";
 import { ProjectContentSkeleton } from "@/components/Skeleton";
+import type { Project } from "@/types";
 
 const SearchModal = lazy(() => import("@/components/SearchModal").then(mod => ({ default: mod.SearchModal })));
 const ProjectContent = lazy(() => import("@/components/ProjectContent").then(mod => ({ default: mod.ProjectContent })));
+
+// Helper to safely normalize content coming from the server
+function normalizeProjectContent(raw: unknown): Record<string, unknown>[] | null {
+  if (Array.isArray(raw)) {
+    return raw as Record<string, unknown>[];
+  }
+  return null;
+}
 
 interface User {
   id: string;
@@ -38,17 +47,42 @@ const EmptyState = memo(function EmptyState({ onCreateProject }: { onCreateProje
   const t = useTranslations("home");
 
   return (
-    <main className="flex-1 flex flex-col items-center justify-center bg-white dark:bg-zinc-900">
-      <div className="text-center">
-        <h2 className="text-2xl font-semibold text-zinc-700 dark:text-zinc-200 mb-4">
+    <main className="flex-1 flex flex-col items-center justify-center bg-zinc-50 text-zinc-700 dark:bg-zinc-950 dark:text-zinc-400">
+      <div className="text-center max-w-md px-6 py-8 rounded-xl border border-zinc-200/80 bg-white shadow-[0_0_30px_rgba(15,23,42,0.08)] dark:border-zinc-800/60 dark:bg-zinc-900/60 dark:shadow-[0_0_40px_rgba(0,0,0,0.6)]">
+        <div className="w-full h-24 mb-6 rounded-lg border border-zinc-200/80 bg-gradient-to-r from-zinc-50 via-slate-50 to-indigo-100/40 flex items-center justify-center overflow-hidden relative dark:border-zinc-800/60 dark:from-zinc-900 dark:via-zinc-900 dark:to-indigo-950/20">
+          <div className="opacity-[0.08] bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] absolute inset-0 dark:opacity-10" />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-8 h-8 text-zinc-400 dark:text-zinc-700"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="16" y="16" width="6" height="6" rx="1" />
+            <rect x="2" y="16" width="6" height="6" rx="1" />
+            <rect x="9" y="2" width="6" height="6" rx="1" />
+            <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3" />
+            <path d="M12 12V8" />
+          </svg>
+        </div>
+
+        <h2 className="text-2xl font-medium tracking-tight text-zinc-900 mb-3 dark:text-zinc-100">
           {t("welcome")}
         </h2>
-        <p className="text-zinc-500 dark:text-zinc-400 mb-6">{t("createFirstNote")}</p>
+        <p className="text-sm text-zinc-500 mb-6 dark:text-zinc-500">
+          {t("createFirstNote")}
+        </p>
         <button
           onClick={onCreateProject}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-xs font-medium text-white tracking-wide shadow-[0_0_16px_rgba(79,70,229,0.45)] transition-colors"
         >
-          {t("createNewNote")}
+          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-indigo-400/20 border border-indigo-400/60 text-[10px]">
+            +
+          </span>
+          <span>{t("createNewNote")}</span>
         </button>
       </div>
     </main>
@@ -58,8 +92,13 @@ const EmptyState = memo(function EmptyState({ onCreateProject }: { onCreateProje
 const SelectProjectPrompt = memo(function SelectProjectPrompt() {
   const t = useTranslations("home");
   return (
-    <main className="flex-1 flex flex-col items-center justify-center bg-white dark:bg-zinc-900">
-      <div className="text-zinc-400">{t("selectNote")}</div>
+    <main className="flex-1 flex flex-col items-center justify-center bg-zinc-50 text-zinc-700 dark:bg-zinc-950 dark:text-zinc-400">
+      <div className="text-center px-4 py-6 rounded-lg border border-zinc-200/80 bg-white shadow-sm dark:border-zinc-800/60 dark:bg-zinc-900/60">
+        <p className="text-sm text-zinc-500 mb-2 dark:text-zinc-500">{t("selectNote")}</p>
+        <p className="text-[11px] text-zinc-400 font-mono dark:text-zinc-600">
+          ⌘K · Search notes
+        </p>
+      </div>
     </main>
   );
 });
@@ -103,6 +142,11 @@ export function HomeClient({ user, initialProjectId }: HomeClientProps) {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
+    // Clean up any temp projects that may have persisted
+    useProjectStore.setState((state) => ({
+      projects: state.projects.filter(p => !p.id.startsWith("temp-")),
+    }));
+
     loadProjects();
     initialSync();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,23 +163,41 @@ export function HomeClient({ user, initialProjectId }: HomeClientProps) {
   const showToast = useCallback((message: string) => setToast(message), [setToast]);
 
   const handleCreateProject = useCallback(async () => {
-    const tempProject = await createProject(tDefaults("newProjectTitle"), user.id);
-    setCurrentProjectId(tempProject.id);
-    showToast(t("projectCreated"));
+    // Create project on server first, then add to store
+    const title = tDefaults("newProjectTitle");
+    const emoji = "📝";
 
     createMutation.mutate(
-      { title: tempProject.title, emoji: tempProject.emoji },
+      { title, emoji },
       {
         onSuccess: (serverProject) => {
-          replaceProject(tempProject.id, {
+          const normalizedProject: Project = {
             ...serverProject,
-            content: serverProject.content as Record<string, unknown>[] | null,
+            content: normalizeProjectContent(serverProject.content),
             assignee: null,
-          });
+            tasks: [],
+            kanbanCards: [],
+            isSmallText: false,
+            isFullWidth: false,
+            isLocked: false,
+            isPublished: false,
+            publishedUrl: null,
+          };
+          
+          // Add the server project directly to the store
+          useProjectStore.setState((state) => ({
+            projects: [normalizedProject, ...state.projects.filter(p => !p.id.startsWith("temp-"))],
+          }));
+          
+          setCurrentProjectId(serverProject.id);
+          showToast(t("projectCreated"));
+        },
+        onError: () => {
+          showToast("Failed to create project");
         },
       }
     );
-  }, [createProject, user.id, setCurrentProjectId, showToast, t, tDefaults, createMutation, replaceProject]);
+  }, [setCurrentProjectId, showToast, t, tDefaults, createMutation]);
 
   const handleDuplicateProject = useCallback(
     async (projectId: string) => {
@@ -143,26 +205,39 @@ export function HomeClient({ user, initialProjectId }: HomeClientProps) {
       if (!project) return;
 
       const title = `${project.title} ${tDefaults("duplicateSuffix")}`;
-      const content = project.content as Record<string, unknown>[] | undefined;
-
-      const tempProject = await createProject(title, user.id, content);
-      setCurrentProjectId(tempProject.id);
-      showToast(t("projectDuplicated"));
+      const content = normalizeProjectContent(project.content);
 
       createMutation.mutate(
-        { title, emoji: project.emoji, content },
+        { title, emoji: project.emoji, content: content ?? undefined },
         {
           onSuccess: (serverProject) => {
-            replaceProject(tempProject.id, {
+            const normalizedProject: Project = {
               ...serverProject,
-              content: serverProject.content as Record<string, unknown>[] | null,
+              content: normalizeProjectContent(serverProject.content),
               assignee: null,
-            });
+              tasks: [],
+              kanbanCards: [],
+              isSmallText: false,
+              isFullWidth: false,
+              isLocked: false,
+              isPublished: false,
+              publishedUrl: null,
+            };
+            
+            useProjectStore.setState((state) => ({
+              projects: [normalizedProject, ...state.projects.filter(p => !p.id.startsWith("temp-"))],
+            }));
+            
+            setCurrentProjectId(serverProject.id);
+            showToast(t("projectDuplicated"));
+          },
+          onError: () => {
+            showToast("Failed to duplicate project");
           },
         }
       );
     },
-    [projects, createProject, user.id, setCurrentProjectId, showToast, t, tDefaults, createMutation, replaceProject]
+    [projects, setCurrentProjectId, showToast, t, tDefaults, createMutation]
   );
 
   const handleRenameProject = useCallback(
@@ -277,7 +352,7 @@ export function HomeClient({ user, initialProjectId }: HomeClientProps) {
   };
 
   return (
-    <div className="flex w-full h-full overflow-hidden">
+    <div className="flex w-full h-full min-h-screen overflow-hidden bg-zinc-50 text-zinc-700 font-sans dark:bg-zinc-950 dark:text-zinc-400">
       {isSearchOpen && (
         <Suspense fallback={<SearchModalFallback />}>
           <SearchModal

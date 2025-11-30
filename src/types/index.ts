@@ -43,6 +43,11 @@ export interface Project {
   status: Status;
   dueDate: Date | null;
   isFavorite: boolean;
+  isSmallText: boolean;
+  isFullWidth: boolean;
+  isLocked: boolean;
+  isPublished: boolean;
+  publishedUrl: string | null;
   userId: string;
   assigneeId: string | null;
   assignee: User | null;
@@ -72,6 +77,11 @@ export interface UpdateProjectInput {
   dueDate?: string | null;
   assigneeId?: string | null;
   isFavorite?: boolean;
+  isSmallText?: boolean;
+  isFullWidth?: boolean;
+  isLocked?: boolean;
+  isPublished?: boolean;
+  publishedUrl?: string | null;
 }
 
 export interface CreateTaskInput {

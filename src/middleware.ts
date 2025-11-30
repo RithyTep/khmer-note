@@ -67,6 +67,8 @@ const BYPASS_PATHS = [
   "/_next",
   "/favicon.ico",
   "/robots.txt",
+  "/public",
+  "/api/public",
 ];
 
 function getClientIP(request: NextRequest): string {
@@ -253,7 +255,10 @@ export function middleware(request: NextRequest) {
   const ip = getClientIP(request);
   const userAgent = request.headers.get("user-agent");
 
-  if (pathname.startsWith("/api/") && isIPBlocked(ip)) {
+  // Skip blocking in development for localhost
+  const isLocalhost = ip === "unknown" || ip === "127.0.0.1" || ip === "::1" || ip.startsWith("192.168.");
+  
+  if (pathname.startsWith("/api/") && isIPBlocked(ip) && !isLocalhost) {
     const blockUntil = ipBlockList.get(ip) || Date.now();
     const retryAfter = Math.ceil((blockUntil - Date.now()) / 1000);
     return createBlockedResponse("IP temporarily blocked due to suspicious activity", retryAfter);

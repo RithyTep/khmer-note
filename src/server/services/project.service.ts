@@ -68,6 +68,11 @@ export async function createProject(userId: string, input: CreateProjectInput) {
       status: input.status ?? "NOT_STARTED",
       dueDate: input.dueDate ? new Date(input.dueDate) : null,
       isFavorite: input.isFavorite ?? false,
+      isSmallText: input.isSmallText ?? false,
+      isFullWidth: input.isFullWidth ?? false,
+      isLocked: input.isLocked ?? false,
+      isPublished: input.isPublished ?? false,
+      publishedUrl: input.publishedUrl ?? null,
       userId,
     },
     include: projectInclude,
@@ -100,6 +105,11 @@ export async function updateProject(
     updateData.dueDate = input.dueDate ? new Date(input.dueDate) : null;
   }
   if (input.isFavorite !== undefined) updateData.isFavorite = input.isFavorite;
+  if (input.isSmallText !== undefined) updateData.isSmallText = input.isSmallText;
+  if (input.isFullWidth !== undefined) updateData.isFullWidth = input.isFullWidth;
+  if (input.isLocked !== undefined) updateData.isLocked = input.isLocked;
+  if (input.isPublished !== undefined) updateData.isPublished = input.isPublished;
+  if (input.publishedUrl !== undefined) updateData.publishedUrl = input.publishedUrl;
 
   if (input.tasks) {
     await syncTasks(projectId, input.tasks);

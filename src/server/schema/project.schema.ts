@@ -65,6 +65,12 @@ export const projectSchema = z.object({
   status: statusEnum.optional().default("NOT_STARTED"),
   dueDate: z.string().datetime().nullable().optional(),
   isFavorite: z.boolean().optional().default(false),
+  isSmallText: z.boolean().optional().default(false),
+  isFullWidth: z.boolean().optional().default(false),
+  isLocked: z.boolean().optional().default(false),
+  isPublished: z.boolean().optional().default(false),
+  publishedUrl: z.string().nullable().optional(),
+  publishedAt: z.string().datetime().nullable().optional(),
   tasks: z.array(taskSchema).optional(),
   kanbanCards: z.array(kanbanCardSchema).optional(),
   updatedAt: z.string().datetime().optional(),
@@ -80,6 +86,11 @@ export const createProjectSchema = z.object({
   status: statusEnum.optional(),
   dueDate: z.string().datetime().optional(),
   isFavorite: z.boolean().optional(),
+  isSmallText: z.boolean().optional(),
+  isFullWidth: z.boolean().optional(),
+  isLocked: z.boolean().optional(),
+  isPublished: z.boolean().optional(),
+  publishedUrl: z.string().optional(),
 });
 
 export const updateProjectSchema = z.object({
@@ -92,6 +103,11 @@ export const updateProjectSchema = z.object({
   status: statusEnum.optional(),
   dueDate: z.string().datetime().nullable().optional(),
   isFavorite: z.boolean().optional(),
+  isSmallText: z.boolean().optional(),
+  isFullWidth: z.boolean().optional(),
+  isLocked: z.boolean().optional(),
+  isPublished: z.boolean().optional(),
+  publishedUrl: z.string().nullable().optional(),
   tasks: z.array(taskSchema).optional(),
   kanbanCards: z.array(kanbanCardSchema).optional(),
 });

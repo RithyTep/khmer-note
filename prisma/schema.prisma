@@ -80,6 +80,11 @@ model Project {
   status         Status    @default(NOT_STARTED)
   dueDate        DateTime?
   isFavorite     Boolean   @default(false)
+  isSmallText    Boolean   @default(false) // Small text mode
+  isFullWidth    Boolean   @default(false) // Full width mode
+  isLocked       Boolean   @default(false) // Lock page from editing
+  isPublished    Boolean   @default(false) // Published/shared publicly
+  publishedUrl   String?   // Custom URL for published page
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
